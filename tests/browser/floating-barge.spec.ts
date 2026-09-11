@@ -98,7 +98,7 @@ test('real PiP owns frozen review, refresh, approval and chat without duplicatin
  await pip.getByRole('button',{name:'Approve and answer'}).click();const body=(await sent).postDataJSON();expect(body.source.approvedImage.data).toBe(preview!.split(',')[1]);expect(body.source.kind).toBe('screenshot');
  await expect(pip.locator('.snapshot-status')).toHaveText('Approved snapshot');
  if(await pip.getByRole('button',{name:'Edit',exact:true}).getAttribute('aria-expanded')==='true')await pip.getByRole('button',{name:'Edit',exact:true}).click();
- await pip.getByRole('button',{name:'Pin controls'}).click();await expect(pip.getByRole('button',{name:'Minimize',exact:true})).toBeDisabled();await pip.getByRole('button',{name:'Pin controls'}).click();
+ await pip.getByRole('button',{name:'Keep visible'}).click();await expect(pip.getByRole('button',{name:'Minimize',exact:true})).toBeDisabled();await pip.getByRole('button',{name:'Keep visible'}).click();
  await pip.getByRole('button',{name:'Minimize',exact:true}).click();await pip.getByRole('button',{name:/Expand assistant/}).click();
  await pip.locator('.workspace-options summary').focus();await expect(pip.locator('.approval-workspace')).toHaveClass(/protected/);
  await pip.locator('.workspace-header').dispatchEvent('pointerdown',{pointerType:'touch'});await expect(pip.locator('.approval-workspace')).toHaveClass(/protected/);
@@ -109,7 +109,7 @@ test('real PiP owns frozen review, refresh, approval and chat without duplicatin
  await page.route('**/sessions/*/turns',route=>route.fulfill({status:503,json:{code:'SERVICE_UNAVAILABLE'}}));
  await pip.getByRole('button',{name:'Approve and answer'}).click();await expect(pip.locator('.approval-workspace > div > .error')).toBeVisible();
  await expect(pip.locator('.queued-question')).toContainText('Read the refreshed instruction');
- await pip.getByRole('button',{name:'Pin controls'}).click();await expect(pip.getByRole('button',{name:'Minimize',exact:true})).toBeDisabled();
+ await pip.getByRole('button',{name:'Keep visible'}).click();await expect(pip.getByRole('button',{name:'Minimize',exact:true})).toBeDisabled();
  await pip.evaluate(()=>window.close());await expect(page.locator('.approval-workspace')).toHaveAttribute('data-outside','false');
  await expect(page.locator('.floating-toolbar')).toContainText('Assistance continues');
  const again=context.waitForEvent('page');await page.locator('#open-floating-assistant').click();const reopened=await again;

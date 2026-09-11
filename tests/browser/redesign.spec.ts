@@ -12,7 +12,7 @@ test('localized floating actions fit, keyboard settings restore focus and large 
   const consent=pip.locator('.screen-consent-setup input');if(await consent.isVisible())await consent.click();
   const primary=pip.locator('.capture-send');await expect(primary).toBeEnabled();expect(await primary.evaluate(e=>e.getBoundingClientRect().bottom)).toBeLessThanOrEqual(480);
   const result=await new AxeBuilder({page:pip}).withTags(['wcag2a','wcag2aa']).analyze();expect(result.violations).toEqual([]);
-  await pip.locator('.workspace-header button').click();await expect(pip.locator('.app-dialog[open]')).toBeVisible();await pip.keyboard.press('Escape');await expect(pip.locator('.workspace-header button')).toBeFocused();
+  await pip.locator('.workspace-header .text-button').click();await expect(pip.locator('.app-dialog[open]')).toBeVisible();await pip.keyboard.press('Escape');await expect(pip.locator('.workspace-header .text-button')).toBeFocused();
   if(locale==='te-IN'){await pip.screenshot({path:'test-results/vaanisetu-floating-telugu.png'});await pip.locator('.assistant-portal').evaluate(e=>e.classList.add('large'));await expect(primary).toBeVisible();expect(await pip.evaluate(()=>getComputedStyle(document.body).overflow)).not.toBe('hidden');}
   await pip.evaluate(()=>window.close());
  }

@@ -1,0 +1,21 @@
+/* Only the native PiP document. Transparent HTML is not desktop transparency. */
+html.pip-document,html.pip-document body,html.pip-document .assistant-portal.in-pip{background:transparent!important;background-image:none!important;box-shadow:none!important;min-height:0}
+.pip-document .in-pip .approval-workspace{background:rgba(225,241,234,.18)!important;background-image:none!important;box-shadow:inset 0 1px 0 #ffffff55!important;outline:none;border:1px solid #668b7d66;backdrop-filter:blur(16px) saturate(110%)}
+.pip-document .approval-workspace::before,.pip-document .approval-workspace::after,.pip-document body::before,.pip-document body::after,.pip-document .assistant-portal::before,.pip-document .assistant-portal::after{content:none!important;background:none!important;box-shadow:none!important}
+.pip-document .workspace-review,.pip-document .context-card,.pip-document .instant-capture{background:transparent!important;background-image:none!important;box-shadow:none!important}
+.pip-document .in-pip .workspace-header{align-items:center;gap:6px}
+.pip-document .workspace-header .workspace-source{flex:1}
+.pip-document .workspace-header>button{min-width:44px;min-height:44px;border:1px solid #668b7d66;border-radius:12px;background:rgba(255,255,255,.15)!important;color:#155e50}
+.pip-document .in-pip .workspace-controls{grid-template-columns:auto 1fr auto}
+.pip-document .workspace-controls button,.pip-document .caption-preview{background:rgba(255,255,255,.15)!important;box-shadow:none!important}
+.pip-document .pip-content{opacity:1;transition:opacity 180ms ease}
+.pip-document .pip-idle:not(.protected):not(:hover):not(:focus-within) .pip-content{opacity:.2}
+.pip-document .pip-idle:not(.protected):not(:hover):not(:focus-within) :is(.caption-preview,.source-options,.source-label){display:none}
+.pip-document .approval-workspace.opaque{background:#fff!important;backdrop-filter:none!important}
+.pip-document .approval-workspace.opaque .pip-content{opacity:1!important}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.pip-document .in-pip .approval-workspace{background:#fff!important;backdrop-filter:none!important}.pip-document .pip-content{opacity:1!important}}
+@media(prefers-reduced-motion:reduce){.pip-document .pip-content{transition:none}}
+
+.pip-document .approval-workspace *{background-image:none!important}
+.pip-document .approval-workspace .primary{background-color:rgba(21,94,80,.16)!important;color:#104b3e;border-color:#527e6e;box-shadow:none!important}
+.pip-document .approval-workspace .primary:hover{background-color:rgba(21,94,80,.23)!important}

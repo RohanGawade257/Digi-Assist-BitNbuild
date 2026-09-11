@@ -1,5 +1,7 @@
 # VaaniSetu — Voice-First Digital Access Assistant
 
+PiP visual correction: `app/pip.css` clears copied document/root backgrounds and uses an 18% tinted panel without wallpaper or gradients. `FloatingPanel.tsx` fades a separate content layer to 20% after 1.5 seconds outside hover/focus, protecting consent, drafts, errors, editing and Keep visible. Status and Stop speaking remain readable. Explicit minimize/expand and high contrast remain available. Browser screenshots still show a white native backing; desktop transparency is not established.
+
 A multilingual, voice-first accessibility layer that allows people who cannot comfortably read, type, navigate complicated websites, or understand English interfaces to access digital information simply by talking.
 
 Brand and materials are centralized in `apps/web/lib/brand.ts`, `background.ts`, `components/Glass.tsx` and `app/glass.css`. The selected original is `Assests/bg3.png`; optimized desktop/mobile WebPs are 11,906/4,576 bytes. Rebuild copies with `python scripts/prepare-background.py` (Pillow); originals are untouched. Configure paths, focal position, tint or gradient fallback in `background.ts`. Accessibility includes a shared opaque/high-contrast choice and a no-backdrop-filter fallback. PiP uses a local tinted surface, never a desktop screenshot or a claim of desktop transparency. VaaniSetu branding and five fixed Sarvam introductions changed; API identifiers, Firebase accounts, databases and environment variables retain compatibility.
