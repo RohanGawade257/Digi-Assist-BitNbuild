@@ -1,6 +1,7 @@
 import type { Locale } from '@guide/contracts';
-export type VoiceCommand = 'repeat' | 'slower' | 'stop-sharing' | 'approve-image' | 'end';
+export type VoiceCommand = 'repeat' | 'slower' | 'stop-sharing' | 'approve-image' | 'end' | 'stop';
 const phrases: Record<VoiceCommand, string[]> = {
+  stop: ['stop','stop speaking','रुको','रुकिए','बोलना बंद करो','থামুন','থামো','थांबा','ఆపు','ఆపండి'],
   repeat: ['repeat','say that again','दोहराएँ','दोहराएं','फिर से बताएं','दुबारा बताओ','আবার বলুন','পুনরায় বলুন','पुन्हा सांगा','మళ్లీ చెప్పండి','மீண்டும் சொல்','دوبارہ کہیں'],
   slower: ['speak slower','धीरे बोलें','धीरे बोलो','ধীরে বলুন','हळू बोला','నెమ్మదిగా మాట్లాడండి','மெதுவாகப் பேசு','آہستہ بولیں'],
   'stop-sharing': ['stop sharing','stop screen sharing','स्क्रीन साझा करना बंद करें','स्क्रीन शेयर बंद करो','স্ক্রিন শেয়ার বন্ধ করুন','स्क्रीन शेअर करणे बंद करा','స్క్రీన్ షేరింగ్ ఆపండి','திரைப் பகிர்வை நிறுத்து','اسکرین شیئر بند کریں'],

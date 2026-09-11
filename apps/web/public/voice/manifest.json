@@ -334,5 +334,40 @@
     "textSha256": "74d1c0fe8b6ab1c75717e3734baaade5a189baba8a045c6b447e2694a885025b",
     "audioSha256": "207698c90a1b7c6c8a101ac79f341e89432c2384fe06368a2c9f1a1ea2b1925d",
     "bytes": 196652
+  },
+  "hi-IN/screenConsent": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "b2e788c60c3a54e6e85af9e1efed0390654ba2fcf3ed7275620bdb0a410c00bd",
+    "audioSha256": "9b6f9be6db847ba37c131d6ad8b734a2b4e01b8b5c14d161887105419e2e61f1",
+    "bytes": 315436
+  },
+  "en-IN/screenConsent": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "54d77b6a654253054670c3835cb88c7c1e00997de68450365801d21f7b0eda8d",
+    "audioSha256": "2906cee1561c8e3e71fcc79ce841611d3b6605cde5dc59b537eef83651d59761",
+    "bytes": 307244
+  },
+  "bn-IN/screenConsent": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "c706e1bef904409b867339136be46cc7724a31c94c7ce739499b897b366e3a50",
+    "audioSha256": "bb09453189f2a1311c5ddf7006a3a3bf4149e0276121ae7eca5bc63ba4acce23",
+    "bytes": 401452
+  },
+  "mr-IN/screenConsent": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "c5fb352ebf97c9a0c56bace57392da73f675be81711ba68683f57664eb28360c",
+    "audioSha256": "d78670e735d80326f282be6359a2a679ea36e9d79d08906ff1dc145a42b499ff",
+    "bytes": 401452
+  },
+  "te-IN/screenConsent": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "8fe5cf415e88b32fc53d873c195d28bf3753f040ab3274f2e33c0a0e11165b99",
+    "audioSha256": "dab74c7d482d454fed5740b43d777080ecc020da8604d2a987eaa074499735a7",
+    "bytes": 421932
   }
 }

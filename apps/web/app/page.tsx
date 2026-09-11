@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createUserWithEmailAndPassword, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
-import { containsSensitiveText, languageNames, locales, type Answer, type Locale, type Source, type Turn, type Preferences } from '@guide/contracts';
+import { containsSensitiveText, languageNames, enabledLocales as locales, type Answer, type Locale, type Source, type Turn, type Preferences } from '@guide/contracts';
 import { catalogs } from '../lib/locales';
 import { ephemeralAuth, firebaseAuth, firebaseConfigured } from '../lib/firebase';
 import { authFailure } from '../lib/auth-errors';
@@ -9,7 +9,9 @@ import { api, RequestError } from '../lib/api';
 import { SafeContext, type ContextState, type ReviewHandle } from '../components/SafeContext';
 import { AnswerAudio, VoiceInput } from '../components/SpeechControls';
 import { AccountTools } from '../components/AccountTools';
-import { FloatingPanel } from '../components/FloatingPanel';
+import { FloatingPanel, type FloatingHandle } from '../components/FloatingPanel';
+import { workspaceWords } from '../lib/workspace-copy';
+import {captureWords} from '../lib/capture-copy';
 import { WordsProvider, words } from '../lib/messages';
 import { ContextHelp } from '../components/ContextHelp';
 import { VoiceAssistant } from '../components/VoiceAssistant';
@@ -34,7 +36,7 @@ export default function Home() {
   const [authError, setAuthError] = useState(''), [authStatus, setAuthStatus] = useState('');
   const [accountOpen, setAccountOpen] = useState(false), [contextOpen, setContextOpen] = useState(false), [settingsOpen, setSettingsOpen] = useState(false);
   const [contextState, setContextState] = useState<ContextState>({ kind: 'none', approved: false });
-  const [messages, setMessages] = useState<{ question: string; locale: Locale; answer: Answer }[]>([]);
+  const [messages, setMessages] = useState<{ question: string; locale: Locale; answer: Answer; interrupted?:boolean }[]>([]);
   const [canRetry, setCanRetry] = useState(false), [serviceReady, setServiceReady] = useState<boolean | null>(null);
   const [started, setStarted] = useState(false);
   const [ended, setEnded] = useState(false), [voiceEpoch, setVoiceEpoch] = useState(0);
@@ -42,7 +44,7 @@ export default function Home() {
   const [consent, setConsent] = useState(false); const [source, setSource] = useState<Source | null>(null);
   const [answer, setAnswer] = useState<Answer | null>(null); const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(''); const [error, setError] = useState('');
-  const [open, setOpen] = useState(true); const [pinned, setPinned] = useState(false);
+  const [open, setOpen] = useState(false); const [pinned, setPinned] = useState(false);
   const [large, setLarge] = useState(false); const [reader, setReader] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [shortcut, setShortcut] = useState(false);
@@ -51,6 +53,9 @@ export default function Home() {
   const [inputMode, setInputMode] = useState<'text' | 'voice'>('text'), [expiresAt, setExpiresAt] = useState(0), [idleWarning, setIdleWarning] = useState(false);
   const creating = useRef<Promise<string> | null>(null);
   const contextReview = useRef<ReviewHandle>(null);
+  const floatingPanel=useRef<FloatingHandle>(null);
+  const [screenAllowed,setScreenAllowed]=useState(false),[capturing,setCapturing]=useState(false),[captureRetry,setCaptureRetry]=useState(false);
+  const capturePending=useRef<AbortController|null>(null),captureLifetime=useRef<AbortController|null>(null);
   const session = useRef<string | null>(null);
   const pending = useRef<{ id: string; abort: AbortController } | null>(null);
   const generation = useRef(0); const composer = useRef<HTMLTextAreaElement>(null); const launcher = useRef<HTMLButtonElement>(null);
@@ -58,10 +63,11 @@ export default function Home() {
   const conversationLog = useRef<HTMLDivElement>(null), consentInput = useRef<HTMLInputElement>(null), authPanel = useRef<HTMLDetailsElement>(null);
   const t = catalogs[interfaceLocale];
   const voice = useVoiceAssistant({locale:replyLocale,allowed:Boolean(user && verified),cloudAllowed,ensureSession,
+    interrupted:id=>{if(capturePending.current)cancelCapture();else if(pending.current)stop();if(id)setMessages(previous=>previous.map(item=>item.answer.requestId===id?{...item,interrupted:true}:item));},
     question:(text,signal)=>send({text,signal}),needLogin:()=>setAccountOpen(true),
     command:async command=>{if(command==='end')await end();else if(command==='stop-sharing')contextReview.current?.clear();else if(command==='approve-image')await contextReview.current?.approveByVoice();}
   });
-  function activateLanguage(locale:Locale) { setReplyLocale(locale);setInputLocale(locale);setInterfaceLocale(locale);setOnboarded(true);setOpen(true);setPinned(true);setAudio(true);void voice.start(locale); }
+  function activateLanguage(locale:Locale) { setReplyLocale(locale);setInputLocale(locale);setInterfaceLocale(locale);setOnboarded(true);setPinned(true);setAudio(true);void voice.start(locale); }
 
   useEffect(() => { document.documentElement.lang = interfaceLocale; document.documentElement.dir = interfaceLocale === 'ur-IN' ? 'rtl' : 'ltr'; }, [interfaceLocale]);
   useEffect(() => {
@@ -70,13 +76,13 @@ export default function Home() {
     return unsubscribe;
   }, []);
   useEffect(() => {
-    setPrefsReady(false); setCloudAllowed(false); setServiceReady(null);
+    setPrefsReady(false); setCloudAllowed(false);setScreenAllowed(false); setServiceReady(null);
     if (!user) { setHistory(false); setAudio(false); return; }
     const controller = new AbortController();
-    void Promise.all([api<Preferences>('/me', 'GET', undefined, controller.signal), api<{ typed: { configured: boolean }; speech: { cloudInputAllowed: boolean; configured: boolean } }>('/capabilities', 'GET', undefined, controller.signal)]).then(([prefs, caps]) => {
+    void Promise.all([api<Preferences>('/me', 'GET', undefined, controller.signal), api<{ screenshot:{onDemandCaptureAllowed:boolean}; typed: { configured: boolean }; speech: { cloudInputAllowed: boolean; configured: boolean } }>('/capabilities', 'GET', undefined, controller.signal)]).then(([prefs, caps]) => {
       if (controller.signal.aborted) return;
       // Explicit language choices made before login take precedence over stored defaults.
-      setLarge(prefs.textScale > 1); setReader(prefs.screenReaderMode); setHistory(prefs.saveHistory); setAudio(prefs.audioEnabled); setRate(prefs.speechRate); setPinned(prefs.chatPinned); setShortcut(prefs.chatShortcutEnabled); setCloudAllowed(caps.speech.cloudInputAllowed && caps.speech.configured); setServiceReady(caps.typed?.configured ?? null); setPrefsReady(true);
+      setScreenAllowed(caps.screenshot.onDemandCaptureAllowed);setLarge(prefs.textScale > 1); setReader(prefs.screenReaderMode); setHistory(prefs.saveHistory); setAudio(prefs.audioEnabled); setRate(prefs.speechRate); setPinned(prefs.chatPinned); setShortcut(prefs.chatShortcutEnabled); setCloudAllowed(caps.speech.cloudInputAllowed && caps.speech.configured); setServiceReady(caps.typed?.configured ?? null); setPrefsReady(true);
     }).catch(() => { if (!controller.signal.aborted) setError(m("Settings could not be loaded. Your current choices still work for this visit.")); });
     return () => controller.abort();
   }, [user]);
@@ -138,26 +144,46 @@ export default function Home() {
     }
     finally { setAuthBusy(false); }
   }
-  async function send(spoken?: {text:string;signal:AbortSignal}): Promise<{answer:Answer;sessionId:string}|undefined> {
+  function cancelCapture(){
+    captureLifetime.current?.abort();captureLifetime.current=null;
+    if(capturePending.current){capturePending.current.abort();capturePending.current=null;stop();setCapturing(false);}
+  }
+  async function captureAndSend(spoken?:{text:string;signal:AbortSignal}):Promise<{answer:Answer;sessionId:string}|undefined>{
+    if(capturePending.current||pending.current||busy||mediaBusy)return;
+    const controller=new AbortController();capturePending.current=controller;
+    captureLifetime.current?.abort();captureLifetime.current=controller;
+    const signal=AbortSignal.any([controller.signal,...(spoken?[spoken.signal]:[])]);
+    setCapturing(true);setCaptureRetry(true);setError('');setCanRetry(false);
+    try{
+      const fresh=await contextReview.current!.takeFresh(signal);signal.throwIfAborted();
+      const result=await send(spoken,fresh,signal);signal.throwIfAborted();
+      if(result&&!spoken)void voice.answer(result,signal);
+      return result;
+    }catch(error){if(!signal.aborted){setError(captureWords(interfaceLocale).failed);setCanRetry(true);}}
+    finally{if(capturePending.current===controller){capturePending.current=null;setCapturing(false);}}
+  }
+  async function send(spoken?: {text:string;signal:AbortSignal}, approvedSource?:Source, captureSignal?:AbortSignal): Promise<{answer:Answer;sessionId:string}|undefined> {
+    if(!approvedSource && contextState.kind==='desktop' && contextState.captureMode==='instant')return captureAndSend(spoken);
     const submittedQuestion=(spoken?.text ?? question).trim();
+    const screenOverview=Boolean(approvedSource?.approvedImage && !submittedQuestion);
     if(spoken) {setQuestion(spoken.text);setInputMode('voice');}
-    if (pending.current || busy || mediaBusy) return;
-    setError(''); setCanRetry(false); setEnded(false); setStarted(true);
-    if (!submittedQuestion) { setError(m('Type a question first. Your message has not been sent.')); composer.current?.focus(); return; }
+    if (pending.current || busy || mediaBusy || (capturePending.current&&!approvedSource)) return;
+    setError(''); setCanRetry(false);setCaptureRetry(Boolean(approvedSource?.screenConsent)); setEnded(false); setStarted(true);
+    if (!submittedQuestion && !screenOverview) { setError(m('Type a question first. Your message has not been sent.')); composer.current?.focus(); return; }
     if (!user || !verified) { setError(!user ? m('Sign in before sending. Your question stays here.') : t.verify); setAccountOpen(true); requestAnimationFrame(() => authPanel.current?.querySelector<HTMLElement>('input, button')?.focus()); return; }
-    if ((!spoken && !consent) || containsSensitiveText(submittedQuestion)) { setError(t.consentError); consentInput.current?.focus(); return; }
-    if (contextState.kind !== 'none' && !contextState.approved) { setError(m('Approve the exact image or safe labels, or remove the source to ask without a screen.')); reviewContext(); if(spoken)throw new RequestError('CONTEXT_REVIEW_REQUIRED'); return; }
-    if (task === 'draft-text' && !draftLocale) { setError(t.chooseDraft); return; }
+    if ((!spoken && !consent && !approvedSource) || containsSensitiveText(submittedQuestion)) { setError(t.consentError); consentInput.current?.focus(); return; }
+    if (!approvedSource && contextState.kind !== 'none' && !contextState.approved) { setError(m('Approve the exact image or safe labels, or remove the source to ask without a screen.')); reviewContext(); if(spoken)throw new RequestError('CONTEXT_REVIEW_REQUIRED'); return; }
+    if (!screenOverview && task === 'draft-text' && !draftLocale) { setError(t.chooseDraft); return; }
     const marker = ++generation.current;
     const request = { id: crypto.randomUUID(), abort: new AbortController() }; pending.current = request;
-    const signal = AbortSignal.any([request.abort.signal, AbortSignal.timeout(100_000), ...(spoken?[spoken.signal]:[])]);
+    const signal = AbortSignal.any([request.abort.signal, AbortSignal.timeout(100_000), ...(spoken?[spoken.signal]:[]),...(captureSignal?[captureSignal]:[])]);
     setBusy(true); setStatus(t.working);
     try {
       const id = await ensureSession(signal);
-      const freshSource = await contextReview.current?.fresh(source) ?? null;
-      const result = await api<Answer>(`/sessions/${id}/turns`, 'POST', { requestId: request.id, question: submittedQuestion, inputLocale, replyLocale, draftLocale: task === 'draft-text' ? draftLocale : null, taskKind: task, inputMode: spoken?'voice':inputMode, source: freshSource, nonSensitiveConfirmed: true }, signal);
-      if (generation.current !== marker || result.requestId !== request.id || result.sourceVersion !== (source?.version ?? null)) return;
-      setAnswer(result); setMessages(previous => [...previous, { question: submittedQuestion, locale: inputLocale, answer: result }].slice(-6)); setQuestion(''); setConsent(false); setInputMode('text'); setStatus(m('Answer ready.')); setExpiresAt(Date.now() + 900_000);
+      const freshSource = approvedSource || await contextReview.current?.fresh(source) || null;
+      const result = await api<Answer>(`/sessions/${id}/turns`, 'POST', { requestId: request.id, question: submittedQuestion, screenOverview, inputLocale, replyLocale, draftLocale: !screenOverview && task === 'draft-text' ? draftLocale : null, taskKind: screenOverview?'general-help':task, inputMode: spoken?'voice':inputMode, source: freshSource, nonSensitiveConfirmed: true }, signal);
+      if (generation.current !== marker || result.requestId !== request.id || result.sourceVersion !== (freshSource?.version ?? null)) return;
+      setAnswer(result); setMessages(previous => [...previous, { question: submittedQuestion||captureWords(inputLocale).question, locale: inputLocale, answer: result }].slice(-6)); setQuestion(''); setConsent(false); setInputMode('text'); setStatus(m('Answer ready.')); setExpiresAt(Date.now() + 900_000);
       requestAnimationFrame(() => {
         const log = conversationLog.current, latest = log?.lastElementChild;
         if (log && latest) log.scrollTo({ top: latest.getBoundingClientRect().top - log.getBoundingClientRect().top + log.scrollTop });
@@ -177,20 +203,21 @@ export default function Home() {
     } finally { if (generation.current === marker) { pending.current = null; setBusy(false); } }
   }
   async function end(logout = false) {
+    cancelCapture();
     voice.end(); stop(); const id = session.current;
     contextReview.current?.clear();
-    session.current = null; setExpiresAt(0); setAnswer(null); setMessages([]); setQuestion(''); setConsent(false); setSource(null); setResetKey(k => k + 1); setError(''); setAuthError(''); setAuthStatus(''); setStatus(''); setEnded(true); setOpen(true);
+    session.current = null; setExpiresAt(0); setAnswer(null); setMessages([]); setQuestion(''); setConsent(false); setSource(null); setResetKey(k => k + 1); setError(''); setAuthError(''); setAuthStatus(''); setStatus(''); setEnded(true); setOpen(false);
     if (id) { try { await api(`/sessions/${id}/end`, 'POST'); } catch (err) { if (!(err instanceof RequestError && err.code === 'SESSION_CLOSED')) setError(t.error); } }
     if (logout && firebaseConfigured) { try { await signOut(firebaseAuth()); setEmail(''); } catch { setError(t.error); } }
   }
   function closeChat() { setVoiceEpoch(value => value + 1); setOpen(false); suppressReveal.current = true; launcher.current?.focus(); }
   function focusComposer() { setOpen(true); setEnded(false); requestAnimationFrame(() => composer.current?.focus()); }
-  function reviewContext() { setContextOpen(true); requestAnimationFrame(() => document.getElementById('context-title')?.focus()); }
+  function reviewContext() { setContextOpen(true);floatingPanel.current?.review();requestAnimationFrame(() => document.getElementById('context-title')?.focus()); }
   function chooseStart(kind: 'text' | 'screen' | 'image') { setEnded(false); setStarted(true); if (kind === 'text') focusComposer(); else { setContextOpen(true); if (kind === 'screen') contextReview.current?.share(); else contextReview.current?.chooseFile(); requestAnimationFrame(() => document.getElementById('source-panel')?.scrollIntoView({ block: 'nearest' })); } }
   function example(kind: Turn['taskKind'], text: string) { stop(); setTask(kind); if (kind === 'draft-text' && !draftLocale) setDraftLocale('en-IN'); if (!question.trim()) { setQuestion(words(inputLocale)(text)); setConsent(false); } focusComposer(); }
   const sourceName = contextState.kind === 'none' ? m('No screen context') : contextState.kind === 'screenshot' ? m('Uploaded screenshot') : contextState.kind === 'description' ? m('Text description') : contextState.surface === 'browser' ? m('Shared tab') : contextState.surface === 'window' ? m('Shared window') : contextState.surface === 'monitor' ? m('Shared display') : m('Shared screen');
   const helpTopic = contextOpen ? 'source' : !user ? 'account' : !consent && question.trim() ? 'privacy' : 'chat';
-  const helpText = helpTopic === 'source' ? m('Review a cropped or masked image before sending it to Gemini, or choose labels only. Nothing is sent until you ask a question.') : helpTopic === 'account' ? m('You can prepare a question first. Sign in or create an account when you are ready to send it.') : helpTopic === 'privacy' ? m('Leave out names, passwords and personal details. Confirm the privacy checkbox before each message.') : m('Type your question and choose Send, or press Enter. Shift+Enter adds a new line. You can stop a reply or retry without losing your draft.');
+  const helpText = helpTopic === 'source' ? captureWords(interfaceLocale).consent : helpTopic === 'account' ? m('You can prepare a question first. Sign in or create an account when you are ready to send it.') : helpTopic === 'privacy' ? m('Leave out names, passwords and personal details. Confirm the privacy checkbox before each message.') : m('Type your question and choose Send, or press Enter. Shift+Enter adds a new line. You can stop a reply or retry without losing your draft.');
   return <WordsProvider locale={interfaceLocale}><div className={large ? 'app large' : 'app'}>
     <a className="skip" href="#main">{m('Skip to content')}</a>
     <header className="topbar"><div className="brand"><span className="brand-mark" aria-hidden="true">d<span>·</span></span><span>Digital Assistant<small>{m('ONE STEP AT A TIME')}</small></span></div><span className="header-note">{m('You’re always in charge.')}</span>{onboarded && <button type="button" className="stop" onClick={() => void end()}>{m('End assistance')}</button>}</header>
@@ -215,7 +242,7 @@ export default function Home() {
         </div></details>
         <div className="journey-grid">
           <div className="conversation-column">
-            <div className="source-strip"><p><strong>{sourceName}</strong><span>{contextState.kind === 'none' ? m('Only your question will be sent.') : contextState.approved ? contextState.mode === 'approved-image' ? m('Approved image snapshot will be sent to Gemini with your question.') : m('Safe labels approved. Raw images stay on this device.') : m('Review required. Nothing from this source has been shared.')}</span></p><button type="button" className="text-button" aria-controls="source-panel" aria-expanded={contextOpen} onClick={reviewContext}>{contextState.kind === 'none' ? m('Add or review context') : m('Review source')}</button></div>
+            <div className="source-strip"><p><strong>{sourceName}</strong><span>{contextState.kind === 'none' ? m('Only your question will be sent.') : contextState.captureMode==='instant'&&contextState.kind==='desktop' ? (contextState.captureConsent?captureWords(interfaceLocale).enabled:captureWords(interfaceLocale).consent) : contextState.approved ? contextState.mode === 'approved-image' ? m('Approved image snapshot will be sent to Gemini with your question.') : m('Safe labels approved. Raw images stay on this device.') : m('Review required. Nothing from this source has been shared.')}</span></p><button type="button" className="text-button" aria-controls="source-panel" aria-expanded={contextOpen} onClick={reviewContext}>{contextState.kind === 'none' ? m('Add or review context') : m('Review source')}</button></div>
             <ContextHelp topic={helpTopic} text={helpText}/>
             <details ref={authPanel} className="card auth-card" open={accountOpen} onToggle={e => setAccountOpen(e.currentTarget.open)}><summary>{user ? verified ? m('Account and sign out') : t.verify : m('Sign in to send your question')}</summary>
               {!user ? <><h2 id="auth-title">{t.signIn}</h2><p>{m('Your account keeps assistance private. Your questions are not saved as history.')}</p>{!firebaseConfigured && <p className="notice">{t.unavailable}</p>}<form onSubmit={e => { e.preventDefault(); void account('login'); }}><div className="two-columns"><label>{t.email}<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}/></label><label>{t.password}<input type="password" autoComplete="current-password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)}/></label></div><div className="actions"><button type="submit" className="primary" disabled={authBusy || !firebaseConfigured}>{t.signIn}</button><button type="button" className="secondary" disabled={authBusy || !firebaseConfigured} onClick={e => { if (e.currentTarget.form?.reportValidity()) void account('signup'); }}>{t.signUp}</button><button type="button" className="text-button" disabled={authBusy || !firebaseConfigured || !email} onClick={() => void account('reset')}>{t.reset}</button></div></form></>
@@ -224,12 +251,12 @@ export default function Home() {
             </details>
             {serviceReady === false && <p className="notice">{m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')}</p>}
             {ended && <section className="notice" role="status"><h2>{m('Assistance ended')}</h2><p>{m('Screen sharing and recording have stopped. Start a new question whenever you are ready.')}</p></section>}
-            <FloatingPanel controls={<><button type="button" ref={launcher} className="secondary" aria-expanded={open} aria-controls="chat" onFocus={() => { if (suppressReveal.current) { suppressReveal.current = false; return; } setOpen(true); }} onClick={focusComposer}>{t.open}</button><label className="check"><input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)}/>{t.pin}</label></>} open={open} locale={interfaceLocale} large={large} onOpen={() => setOpen(true)} onClosedReturn={() => { suppressReveal.current = true; launcher.current?.focus(); }}>
+            <FloatingPanel ref={floatingPanel} review={<SafeContext ref={contextReview} compact question={question} onApproveAnswer={async approved=>{const result=await send(undefined,approved);if(result)await voice.answer(result);}} screenAllowed={screenAllowed} busy={capturing||busy} onCapture={()=>void captureAndSend()} onRevoke={cancelCapture} onExplainConsent={()=>{void voice.explainConsent();}} onShared={()=>floatingPanel.current?.afterShare()} onExplainShare={()=>{void voice.explainConsent('share');}} t={t} onChange={changeSource} onState={setContextState} resetKey={resetKey}/>} needsReview={contextState.kind!=='none'&&!contextState.approved} question={question} error={error} caption={voice.caption} recovery={captureRetry&&canRetry?<button type="button" className="secondary" disabled={capturing||busy} onClick={()=>void captureAndSend()}>{captureWords(interfaceLocale).retry}</button>:null} ended={ended} onStopSpeaking={voice.stopSpeaking} voiceState={voice.state} onPause={()=>{if(voice.state==='paused')void voice.resume();else voice.pause();}} onEnd={()=>void end()} sourceStatus={sourceName} onCloseChat={()=>setOpen(false)} controls={<><button type="button" ref={launcher} className="secondary" aria-expanded={open} aria-controls="chat"  onClick={focusComposer}>{t.open}</button><label className="check"><input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)}/>{t.pin}</label></>} open={open} locale={interfaceLocale} large={large} onOpen={() => setOpen(true)} onClosedReturn={()=>{}}>
               <section className="card chat" id="chat" hidden={!open} aria-labelledby="chat-title" onBlur={e => { if (!pinned && !voice.active && !question && !messages.length && !busy && !mediaBusy && !error && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }} onKeyDown={e => { if (e.key === 'Escape' && !e.nativeEvent.isComposing) { e.preventDefault(); closeChat(); } }}>
                 <div className="section-heading"><h2 id="chat-title">{m('Your conversation')}</h2><button className="text-button" type="button" onClick={closeChat}>{t.close}</button></div>
                 <VoiceAssistant voice={voice} locale={replyLocale} onEnd={()=>void end()}/><div className="conversation-log" ref={conversationLog} tabIndex={messages.length ? 0 : undefined} role="region" aria-label={m('Conversation messages')}>
                   {!messages.length && <div className="empty-conversation"><p>{m('Ask one question at a time. I can explain an instruction or help prepare a draft. You decide what to do.')}</p><details className="examples"><summary>{m('Try an example')}</summary><div className="example-list"><button type="button" className="example" onClick={() => example('general-help', 'Help me understand a form.')}>{m('Understand a form')}</button><button type="button" className="example" onClick={() => example('guide-task', 'Help me find a feature on a website.')}>{m('Find a website feature')}</button><button type="button" className="example" onClick={() => example('draft-text', 'Draft an email asking for public instructions.')}>{m('Draft an email')}</button></div></details></div>}
-                  {messages.map((item, index) => <article key={item.answer.requestId} className="conversation-turn"><p className="question-bubble" lang={item.locale} dir={item.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.question}</p><div className="answer"><h3>{item.answer.status === 'answer' ? m('One step to try') : m('More information is needed')}</h3><p lang={item.answer.explanation.locale} dir={item.answer.explanation.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.answer.explanation.text}</p>{item.answer.referencedLabels.length > 0 && <ul>{item.answer.referencedLabels.map(label => <li key={label.id}><bdi>{label.text}</bdi></li>)}</ul>}{item.answer.draft && <><h3>{t.draft}</h3><pre lang={item.answer.draft.locale} dir={item.answer.draft.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.answer.draft.text}</pre><button type="button" className="secondary" onClick={() => { void navigator.clipboard.writeText(item.answer.draft!.text).then(() => setStatus(t.copied)).catch(() => setError(t.error)); }}>{t.copy}</button></>}<p className="hint">{item.answer.evidence.some(e => e.kind === 'approved-image') && m('This answer uses your approved image snapshot, not a live screen.')}{' '}{m('No external action has been performed.')}{' '}{item.answer.sourceVersion !== null && m('Review your current screen before following earlier guidance.')}</p>
+                  {messages.map((item, index) => <article key={item.answer.requestId} className="conversation-turn"><p className="question-bubble" lang={item.locale} dir={item.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.question}</p><div className="answer">{item.interrupted&&<p role="status">{workspaceWords(interfaceLocale).interrupted}</p>}<h3>{item.answer.status === 'answer' ? m('One step to try') : m('More information is needed')}</h3><p lang={item.answer.explanation.locale} dir={item.answer.explanation.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.answer.explanation.text}</p>{item.answer.referencedLabels.length > 0 && <ul>{item.answer.referencedLabels.map(label => <li key={label.id}><bdi>{label.text}</bdi></li>)}</ul>}{item.answer.draft && <><h3>{t.draft}</h3><pre lang={item.answer.draft.locale} dir={item.answer.draft.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.answer.draft.text}</pre><button type="button" className="secondary" onClick={() => { void navigator.clipboard.writeText(item.answer.draft!.text).then(() => setStatus(t.copied)).catch(() => setError(t.error)); }}>{t.copy}</button></>}<p className="hint">{item.answer.evidence.some(e => e.kind === 'approved-image') && m('This answer uses your approved image snapshot, not a live screen.')}{' '}{m('No external action has been performed.')}{' '}{item.answer.sourceVersion !== null && m('Review your current screen before following earlier guidance.')}</p>
                     {index === messages.length - 1 && <>{item.answer.status === 'answer' && <button type="button" className="secondary" disabled={busy || Boolean(question.trim())} onClick={() => { setQuestion(words(inputLocale)('I have done the previous step. What should I do next?')); setConsent(false); setStatus(m('Review this follow-up, then send it when ready.')); focusComposer(); }}>{m('I’ve done this')}</button>}{session.current && <AnswerAudio answer={item.answer} sessionId={session.current} enabled={audio && !reader && open && !voice.active} rate={rate} onEnable={reader ? undefined : () => setAudio(true)}/>}</>}
                   </div></article>)}
                 </div>
@@ -238,7 +265,7 @@ export default function Home() {
                   <div className="composer-hints" id="composer-help"><span>{m('Enter: send · Shift+Enter: new line')}</span><span>{question.length}/2000</span></div>
                   <label className="check" id="privacy-help"><input ref={consentInput} type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>{t.safe}</label>
                   {!user ? <p className="hint">{m('Sign in before sending. Your question stays here.')}</p> : !verified ? <p className="hint">{t.verify}</p> : null}
-                  <div className="actions"><button type="submit" className="primary" disabled={busy || mediaBusy}>{busy ? t.working : t.send}</button>{busy && <button type="button" className="stop" onClick={stop}>{t.stop}</button>}{canRetry && <button type="button" className="secondary" disabled={busy || mediaBusy} onClick={() => void send()}>{m('Retry')}</button>}</div>
+                  <div className="actions"><button type="submit" className="primary" disabled={busy || mediaBusy}>{busy ? t.working : t.send}</button>{busy && <button type="button" className="stop" onClick={stop}>{t.stop}</button>}{canRetry && <button type="button" className="secondary" disabled={busy || mediaBusy} onClick={()=>{if(captureRetry)void captureAndSend();else void send();}}>{captureRetry?captureWords(interfaceLocale).retry:source?.approvedImage?captureWords(interfaceLocale).reviewRetry:m('Retry')}</button>}</div>
                   <div className="status-area"><p role="status" aria-live="polite" aria-atomic="true">{status}</p>{error && <p className="error" role="alert">{error}</p>}</div>
                 </form>
                 <details className="task-options"><summary>{m('Question and draft languages')}</summary><fieldset className="task-grid"><legend>{t.task}</legend>{(['general-help', 'guide-task', 'draft-text'] as const).map(kind => <label className={task === kind ? 'task selected' : 'task'} key={kind}><input type="radio" name="task" checked={task === kind} onChange={() => { if (pending.current) stop(); setTask(kind); }}/><strong>{kind === 'general-help' ? t.general : kind === 'guide-task' ? t.guide : t.emailTask}</strong></label>)}</fieldset><div className="two-columns"><LanguageSelect label={t.input} value={inputLocale} onChange={locale => { if (pending.current) stop(); setInputLocale(locale); }}/><LanguageSelect label={t.draft} value={draftLocale} empty onChange={locale => { if (pending.current) stop(); setDraftLocale(locale); }}/></div></details>
@@ -248,9 +275,9 @@ export default function Home() {
             {idleWarning && <p className="notice" role="status">{m('This session expires after 15 minutes without an answer. Your typed draft stays here; sending after expiry starts a new session.')}</p>}
             {user && <AccountTools key={user.uid + ':' + resetKey} sessionId={session.current} locale={interfaceLocale} onDeleted={() => { void end(); }}/>}
           </div>
-          <aside className="source-column"><details id="source-panel" open={contextOpen} onToggle={e => setContextOpen(e.currentTarget.open)}><summary>{m('Screen or text context')}<span className="hint">{sourceName}</span></summary><SafeContext ref={contextReview} onExplainShare={()=>{void voice.announce('share');}} t={t} onChange={changeSource} onState={setContextState} resetKey={resetKey}/></details><p className="hint">{m('Your screen is shared only when you choose it. Text input stays available during sharing.')}</p></aside>
+
         </div>
       </div>}
-    </main><footer className="footer"><span>{m('Made for a more accessible everyday.')}</span><span>English · हिन्दी · বাংলা · मराठी · తెలుగు · தமிழ் · اردو</span></footer>
+    </main><footer className="footer"><span>{m('Made for a more accessible everyday.')}</span><span>{locales.map(locale=>languageNames[locale]).join(' / ')}</span></footer>
   </div></WordsProvider>;
 }

@@ -3,7 +3,7 @@ import { Body, Controller, Delete, Get, HttpCode, Module, Param, Patch, Post, Re
 import { FileInterceptor } from '@nestjs/platform-express';
 import { NestFactory } from '@nestjs/core';
 import { json, type Response } from 'express';
-import { locales, speechOutputLocales, newSessionSchema } from '@guide/contracts';
+import { enabledLocales as locales, speechOutputLocales, newSessionSchema } from '@guide/contracts';
 import { Configuration, operationReady } from './config';
 import { Database } from './database';
 import { AuthGuard, IdentityService, requireVerified, type AuthRequest } from './auth';
@@ -29,7 +29,7 @@ export class HealthController {
 @UseGuards(AuthGuard)
 export class ApiController {
   constructor(private readonly config: Configuration, private readonly sessions: Sessions, private readonly assistant: Assistant, private readonly speech: Speech, private readonly identity: IdentityService) {}
-  @Get('capabilities') capabilities() { return { locales, typed: { configured: operationReady(this.config, 'gemini', 'generate'), translationConfigured: operationReady(this.config, 'sarvam', 'translate'), liveVerified: false }, screenshot: { modes: ['approved-image', 'reviewed-labels'], rawUpload: false, approvedImageUpload: true }, speech: { configured: operationReady(this.config, 'sarvam', 'transcribe'), outputConfigured: operationReady(this.config, 'sarvam', 'speak'), cloudInputAllowed: !this.config.strictPrivacy, outputLocales: speechOutputLocales, unavailableOutputLocales: ['ur-IN'], liveVerified: false }, history: { enabled: true, defaultEnabled: false, retentionDays: 30 }, desktopCapture: true }; }
+  @Get('capabilities') capabilities() { return { locales, typed: { configured: operationReady(this.config, 'gemini', 'generate'), translationConfigured: operationReady(this.config, 'sarvam', 'translate'), liveVerified: false }, screenshot: { modes: ['approved-image', 'reviewed-labels'], rawUpload: false, approvedImageUpload: true, onDemandCaptureAllowed: !this.config.strictPrivacy }, speech: { configured: operationReady(this.config, 'sarvam', 'transcribe'), outputConfigured: operationReady(this.config, 'sarvam', 'speak'), cloudInputAllowed: !this.config.strictPrivacy, outputLocales: speechOutputLocales, unavailableOutputLocales: ['ta-IN', 'ur-IN'], liveVerified: false }, history: { enabled: true, defaultEnabled: false, retentionDays: 30 }, desktopCapture: true }; }
   @Get('me') me(@Req() req: AuthRequest) { return this.sessions.preferences(req.identity.uid); }
   @Patch('me') preferences(@Req() req: AuthRequest, @Body() body: unknown) { return this.sessions.preferences(req.identity.uid, body); }
   @Post('sessions') create(@Req() req: AuthRequest, @Body() body: unknown) {

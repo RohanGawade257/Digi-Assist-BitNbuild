@@ -2,10 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { MAX_APPROVED_IMAGE_BYTES, type ApprovedImage } from '@guide/contracts';
 import { useWords } from '../lib/messages';
+import { workspaceWords } from '../lib/workspace-copy';
 
 export type PreparedImage = Omit<ApprovedImage, 'analysisConsent'>;
-export function ImageReview({ imageUrl, onEdit, onPrepared }: { imageUrl: string; onEdit: () => void; onPrepared: (image: PreparedImage) => void }) {
-  const { m } = useWords();
+export function ImageReview({ imageUrl, onEdit, onPrepared, compact=false }: { imageUrl: string; onEdit: () => void; onPrepared: (image: PreparedImage) => void; compact?:boolean }) {
+  const { m,uiLocale } = useWords();const w=workspaceWords(uiLocale);const [expanded,setExpanded]=useState(!compact),[editing,setEditing]=useState(!compact);
   const canvas = useRef<HTMLCanvasElement>(null), generation = useRef(0);
   const [preview, setPreview] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [area, setArea] = useState({ x: 0, y: 0, width: 100, height: 100 });
@@ -48,13 +49,14 @@ export function ImageReview({ imageUrl, onEdit, onPrepared }: { imageUrl: string
     } catch { if (marker === generation.current) setError(m('The edited image is too large or could not be prepared. Use a smaller screenshot.')); }
     finally { if (marker === generation.current) setBusy(false); }
   }
-  return <div className="image-review">
-    <h3>{m('Prepare an image for AI analysis')}</h3>
+  return <div className="image-review" data-editing={editing}>
+    {compact && <div className="actions"><button type="button" aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)}>{w.inspect}</button><button type="button" aria-expanded={editing} onClick={()=>{setEditing(value=>!value);setExpanded(true);}}>{w.edit}</button></div>}
+    <div hidden={compact&&!editing}><h3>{m('Prepare an image for AI analysis')}</h3>
     <p>{m('Crop out unrelated content and cover private areas with solid masks. Masking does not guarantee privacy. Inspect the final image yourself.')}</p>
     <p>{m('Drag to select an area, or enter percentages below. Cropping and masking happen only on this device.')}</p>
-    <canvas ref={canvas} hidden/>
-    {preview && <div className="image-edit-preview" onPointerDown={event => {
-      if (busy) return; const box = event.currentTarget.getBoundingClientRect();
+    </div><canvas ref={canvas} hidden/>
+    {preview && <div className={expanded?'image-edit-preview':'image-edit-preview thumbnail'} onPointerDown={event => {
+      if (busy || !editing) return; const box = event.currentTarget.getBoundingClientRect();
       pointerStart.current = { x: 100 * (event.clientX - box.left) / box.width, y: 100 * (event.clientY - box.top) / box.height }; event.currentTarget.setPointerCapture(event.pointerId);
     }} onPointerMove={event => {
       if (!pointerStart.current) return; const box = event.currentTarget.getBoundingClientRect();
@@ -62,10 +64,10 @@ export function ImageReview({ imageUrl, onEdit, onPrepared }: { imageUrl: string
       const start = pointerStart.current; select({ x: Math.min(start.x, x), y: Math.min(start.y, y), width: Math.abs(start.x - x), height: Math.abs(start.y - y) });
     }} onPointerUp={() => { pointerStart.current = null; }} onPointerCancel={() => { pointerStart.current = null; }}>
       <img className="approved-image-preview" src={preview} alt={m('Exact image to be sent after approval. Review every visible area.')}/>
-      <span aria-hidden="true" className="edit-area" style={{ left: `${area.x}%`, top: `${area.y}%`, width: `${area.width}%`, height: `${area.height}%` }}/>
+      {editing && <span aria-hidden="true" className="edit-area" style={{ left: `${area.x}%`, top: `${area.y}%`, width: `${area.width}%`, height: `${area.height}%` }}/>}
     </div>}
-    <fieldset disabled={busy}><legend>{m('Area to crop or mask (percent)')}</legend><div className="image-coordinates">{(['x', 'y', 'width', 'height'] as const).map(key => <label key={key}>{key === 'x' ? m('Left') : key === 'y' ? m('Top') : key === 'width' ? m('Width') : m('Height')}<input type="number" min={key === 'x' || key === 'y' ? 0 : 1} max={100} step="1" value={Math.round(area[key] * 100) / 100} onChange={event => select({ ...area, [key]: Math.max(0, Math.min(100, Number(event.target.value))) })}/></label>)}</div></fieldset>
+    <div hidden={!editing}><fieldset disabled={busy}><legend>{m('Area to crop or mask (percent)')}</legend><div className="image-coordinates">{(['x', 'y', 'width', 'height'] as const).map(key => <label key={key}>{key === 'x' ? m('Left') : key === 'y' ? m('Top') : key === 'width' ? m('Width') : m('Height')}<input type="number" min={key === 'x' || key === 'y' ? 0 : 1} max={100} step="1" value={Math.round(area[key] * 100) / 100} onChange={event => select({ ...area, [key]: Math.max(0, Math.min(100, Number(event.target.value))) })}/></label>)}</div></fieldset>
     <div className="actions"><button type="button" className="secondary" disabled={busy || !preview} onClick={() => void edit('crop')}>{m('Crop to area')}</button><button type="button" className="secondary" disabled={busy || !preview} onClick={() => void edit('mask')}>{m('Mask area')}</button><button type="button" className="text-button" disabled={busy} onClick={() => void reset()}>{m('Reset image edits')}</button></div>
-    {busy && <p role="status">{m('Preparing image locally...')}</p>}{error && <p role="alert">{error}</p>}
+    </div>{busy && <p role="status">{m('Preparing image locally...')}</p>}{error && <p role="alert">{error}</p>}
   </div>;
 }

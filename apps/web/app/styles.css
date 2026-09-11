@@ -111,3 +111,68 @@ button, input, select, textarea, summary { scroll-margin-block: 1.5rem; }
 .voice-caption { font-size: 1.1rem; line-height: 1.7; max-height: 11rem; overflow: auto; margin-block: 1rem; }
 .voice-assistant .actions { gap: .5rem; }
 .voice-assistant [role=status] { font-weight: bold; color: var(--primary); }
+/* One real PiP workspace; the same DOM also provides the in-page fallback. */
+.approval-workspace{container-type:inline-size;border:1px solid var(--border,#cbd5e1);border-radius:18px;background:rgba(245,250,249,.96);box-shadow:0 8px 28px #17393220;transition:box-shadow .15s,background .15s;padding:8px;color:#15372f}
+.approval-workspace:not(.protected):not(:hover):not(:focus-within){box-shadow:none;background:#edf2ef}
+.approval-workspace.opaque{background:#fff;color:#112c24;border:2px solid #173e32}
+.workspace-header,.workspace-controls,.workspace-tabs{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.workspace-source{flex:1;font-size:13px;font-weight:650}.workspace-header button,.workspace-controls button,.workspace-tabs button{min-height:44px;padding:6px 9px;font-size:13px}
+.workspace-columns{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}.workspace-review{min-width:0;order:2}.workspace-chat{min-width:0;order:1}
+.workspace-review .context-card{padding:8px;border:0;box-shadow:none;background:transparent}.workspace-review h2{font-size:17px;margin:4px 0}.workspace-review p{font-size:13px;line-height:1.35;margin:6px 0}.workspace-review .check{font-size:13px;align-items:flex-start}.workspace-review .primary{width:100%;min-height:44px}.workspace-review .source-options{font-size:13px}
+.queued-question{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.snapshot-status{font-weight:700}.snapshot-privacy{padding:6px;border-left:3px solid #34856b}.image-edit-preview.thumbnail{max-height:92px;width:100%;overflow:hidden}.image-edit-preview.thumbnail img{height:92px;object-fit:contain;width:100%}.image-review .actions button{font-size:13px;min-height:44px;padding:6px 10px}.image-review:has([aria-expanded="true"]){outline:1px solid #a4c5b8}.workspace-options{font-size:13px;margin-top:6px}.workspace-options summary,.source-options summary{min-height:32px;padding:6px;cursor:pointer}.workspace-chat .chat{padding:10px;margin:0;box-shadow:none;width:100%}.workspace-chat .conversation-log{max-height:230px}.workspace-chat .voice-assistant{padding:8px}.workspace-chat .voice-assistant h2{font-size:16px}.workspace-chat .voice-caption{font-size:14px}.workspace-chat .empty-conversation{display:none}.workspace-chat textarea{min-height:70px}.assistant-portal.in-pip{padding:4px;max-width:none}.assistant-portal.in-pip .app{padding:0}.workspace-tabs{display:none}
+@container (min-width:600px){.chat-expanded .workspace-columns{grid-template-columns:minmax(0,1fr) 330px}.review-left .workspace-columns{grid-template-columns:330px minmax(0,1fr)}.review-left .workspace-review{order:0}}
+@container (max-width:599px){.chat-expanded .workspace-tabs{display:flex}.chat-expanded .workspace-columns[data-tab="chat"] .workspace-review{display:none}.chat-expanded .workspace-columns[data-tab="review"] .workspace-chat{display:none}}
+@media(prefers-reduced-motion:reduce){.approval-workspace{transition:none}}
+
+.journey-grid { grid-template-columns: minmax(0, 1fr); }
+.approval-workspace:not(.protected):not(:hover):not(:focus-within) .workspace-options:not([open]) { opacity: .75; }
+
+
+.approval-workspace:not(.protected):not(:hover):not(:focus-within):not(:has(.image-review [aria-expanded="true"], [role="alert"])) details > :not(summary) { display:none; }
+
+
+.workspace-header button,.workspace-controls button { min-width:44px; border-radius:9px; border:1px solid #9db4aa; background:#fff; color:#15372f; }
+.workspace-header button[aria-pressed=true] { background:#d6ebdf; border-color:#215d46; }
+.workspace-review .context-card { margin-bottom:0; }
+.workspace-review #context-title { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+.workspace-review #context-title:focus { position:static; width:auto; height:auto; clip-path:none; }
+.workspace-review .image-review { margin-block:6px; }
+.workspace-review .queued-question { -webkit-line-clamp:1; }
+.workspace-review .image-edit-preview.thumbnail,.workspace-review .image-edit-preview.thumbnail img { height:76px; max-height:76px; }
+.workspace-controls { flex-wrap:nowrap; }
+.workspace-controls button:first-child { flex:1; }
+
+.workspace-source small { display:block; font-size:12px; font-weight:400; }
+.workspace-review .actions { gap:6px; }.workspace-review .actions button { font-size:13px; min-height:44px; padding:6px 10px; }
+/* Dedicated capture controller: the full editor/chat remains opt-in. */
+.approval-workspace { padding:8px; }
+.workspace-header { min-height:22px; }
+.workspace-source { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:13px; }
+.workspace-source small { display:inline; font-size:13px; }
+.workspace-controls { margin-block:4px; }
+.workspace-review .instant-capture { display:grid; grid-template-columns:1fr auto; gap:2px 6px; padding:2px 0; }
+.instant-capture > :not(.capture-stop):not(.source-options) { grid-column:1/-1; }
+.instant-capture .screen-enabled { order:1; display:flex; align-items:center; justify-content:space-between; margin:0; font-size:13px; }
+.instant-capture .screen-enabled button { min-height:32px; font-size:12px; }
+.instant-capture .capture-send { order:2; font-size:15px; min-height:48px; margin:0; }
+.instant-capture .queued-question { order:3; }
+.instant-capture .capture-thumbnail { order:4; font-size:13px; }
+.instant-capture .capture-thumbnail summary { min-height:28px; cursor:pointer; }
+.instant-capture .capture-thumbnail img { width:100%; max-height:180px; object-fit:contain; }
+.instant-capture .capture-stop { order:5; min-height:40px; justify-self:start; }
+.instant-capture .source-options { order:5; min-height:40px; }
+.instant-capture .source-options[open] { grid-column:1/-1; }
+.instant-capture .screen-consent-setup { order:0; }
+.instant-capture .screen-consent-setup .check { font-size:13px; line-height:1.4; margin:4px 0; }
+.instant-capture .screen-consent-setup .text-button { min-height:28px; font-size:12px; }
+.instant-capture .screen-consent-setup ~ .capture-send { display:none; }
+.workspace-options { margin:0; }
+.workspace-options > summary { width:44px; min-height:28px; padding:0 6px; font-size:20px; }
+.workspace-options button { min-height:44px; min-width:44px; }
+.compact-caption { font-size:13px; margin-top:2px; }
+.compact-caption summary { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; min-height:28px; }
+.compact-caption p { margin:0; max-height:160px; overflow:auto; }
+.capture-error p { font-size:13px; margin:4px 0; }
+.capture-error button { min-height:44px; }
+.approval-workspace .compact-caption,.approval-workspace .workspace-options { padding:0; margin:0; }
+.approval-workspace .compact-caption > summary,.approval-workspace .workspace-options > summary { margin:0; padding-block:0; }

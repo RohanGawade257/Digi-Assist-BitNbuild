@@ -20,6 +20,7 @@ export class Assistant {
     const parsed = turnSchema.safeParse(input);
     if (!parsed.success) throw new ApiError('INVALID_INPUT');
     const turn = parsed.data;
+    if(turn.source?.screenConsent && this.config.strictPrivacy)throw new ApiError('CLOUD_SCREEN_DISABLED',403);
     if (turn.source?.approvedImage) validateApprovedImage(turn.source.approvedImage);
     if (this.config.problems.some(problem => !problem.startsWith('SARVAM_'))) throw new ApiError('SERVICE_UNAVAILABLE', 503);
     if (this.config.groups && [turn.inputLocale, turn.replyLocale, turn.draftLocale].some(locale => locale && locale !== 'en-IN') && !operationReady(this.config, 'sarvam', 'translate')) throw new ApiError('TRANSLATION_UNAVAILABLE', 503);
@@ -40,7 +41,7 @@ export class Assistant {
       await this.sessions.claim(ownerUid, sessionId, turn);
       signal.throwIfAborted();
       const labels = turn.source?.reviewedLabels.map(l => l.text) || [];
-      const questionEn = await this.providers.translate(turn.question, turn.inputLocale, 'en-IN', labels, signal);
+      const questionEn = turn.screenOverview ? 'Briefly describe what the supplied screenshot appears to show, without reading out personal details. Then ask: What would you like help with? Do not invent a task or claim this snapshot is a live screen.' : await this.providers.translate(turn.question, turn.inputLocale, 'en-IN', labels, signal);
       if (containsSensitiveText(questionEn)) throw new ApiError('PRIVACY_REVIEW_REQUIRED');
       const recent = await this.sessions.recent(ownerUid, sessionId);
       const model = await this.providers.reason(questionEn, turn, signal, recent.map(item => ({ question: item.question, guidance: item.answer.explanation, draft: item.answer.draft?.text || null })));

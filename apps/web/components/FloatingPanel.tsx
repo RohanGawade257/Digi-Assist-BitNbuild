@@ -1,33 +1,55 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Locale } from '@guide/contracts';
-import { useWords } from '../lib/messages';
+import { workspaceWords } from '../lib/workspace-copy';
 import voiceCopy from '../lib/voice-copy.json';
-type PipApi = { requestWindow: (options: { width: number; height: number }) => Promise<Window> };
-
-export function FloatingPanel({ children, controls, open, locale, large, onOpen, onClosedReturn }: { children: ReactNode; controls?: ReactNode; open: boolean; locale: Locale; large: boolean; onOpen: () => void; onClosedReturn: () => void }) {
-  const { m, uiLocale } = useWords();
-  const place = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null), floating = useRef<Window | null>(null);
-  const [host, setHost] = useState<HTMLDivElement | null>(null), [supported, setSupported] = useState(false), [outside, setOutside] = useState(false), [error, setError] = useState('');
-  const latest = useRef({ open, onClosedReturn }); latest.current = { open, onClosedReturn };
-  useEffect(() => { const element = document.createElement('div'); place.current?.append(element); setHost(element); setSupported('documentPictureInPicture' in window); return () => { floating.current?.close(); element.remove(); }; }, []);
-  useEffect(() => { if (host) { host.lang = locale; host.dir = locale === 'ur-IN' ? 'rtl' : 'ltr'; host.className = large ? 'app large' : 'app'; } }, [host, locale, large]);
-  useEffect(() => { if (!open) floating.current?.close(); }, [open]);
-  function restore() { if (host) place.current?.append(host); setOutside(false); floating.current = null; window.focus(); if (latest.current.open) trigger.current?.focus(); else latest.current.onClosedReturn(); }
-  async function toggle() {
-    if (floating.current) { floating.current.close(); return; }
-    if (!host) return; setError('');
-    try {
-      // Keep this call directly within the user's click, before any other await.
-      const api = (window as unknown as { documentPictureInPicture: PipApi }).documentPictureInPicture;
-      const next = await api.requestWindow({ width: 480, height: 700 });
-      floating.current = next; next.document.title = 'Digital Assistant'; next.document.documentElement.lang = locale; next.document.documentElement.dir = host.dir;
-      document.querySelectorAll('link[rel="stylesheet"], style').forEach(sheet => next.document.head.append(sheet.cloneNode(true)));
-      next.document.body.style.padding = '12px'; next.document.body.append(host); setOutside(true); onOpen();
-      next.addEventListener('pagehide', restore, { once: true });
-      setTimeout(() => host.querySelector('textarea')?.focus(), 0);
-    } catch { setError(m("The floating window could not open. Keep this page beside your other window.")); }
-  }
-  return <><p className="hint" lang={locale}>{voiceCopy[locale].floating}</p><div className="actions floating-toolbar" lang={uiLocale}>{controls}{supported ? <button ref={trigger} type="button" className="secondary" onClick={() => void toggle()}>{outside ? m("Return chat to this page") : m("Open floating chat")}</button> : <p className="hint">{m("Keep this page beside the website you are using. A floating window is offered only in supported desktop browsers.")}</p>}{outside && <p role="status">{m("Chat is in the floating window. Screen review stays on this page.")}</p>}{error && <p role="alert">{error}</p>}</div><div ref={place}/>{host ? createPortal(children, host) : children}</>;
-}
+import {voiceStates,type VoiceState} from '../lib/use-voice-assistant';
+type PipApi={requestWindow:(options:{width:number;height:number})=>Promise<Window>};
+export type FloatingHandle={afterShare:()=>void;review:()=>void};
+function Icon({kind}:{kind:'pin'|'minimize'|'mic'|'stop'|'end'}){const paths={pin:'M8 3h8l-1 7 4 4H5l4-4-1-7M12 14v7',minimize:'M5 12h14',mic:'M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0V5M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8',stop:'M5 8h4l5-4v16l-5-4H5V8M18 9l4 6m0-6-4 6',end:'M6 6l12 12M6 18 18 6'};return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]}/></svg>;}
+type Props={children:ReactNode;review:ReactNode;controls?:ReactNode;open:boolean;locale:Locale;large:boolean;onOpen:()=>void;onCloseChat:()=>void;onClosedReturn:()=>void;needsReview:boolean;question:string;error:string;caption:string;recovery:ReactNode;ended:boolean;onPause:()=>void;onStopSpeaking:()=>void;onEnd:()=>void;sourceStatus:string;voiceState:VoiceState};
+export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPanel({children,review,controls,open,locale,large,onOpen,onCloseChat,onClosedReturn,needsReview,question,error,caption,recovery,ended,onPause,onStopSpeaking,onEnd,sourceStatus,voiceState},ref){
+ const w=workspaceWords(locale),place=useRef<HTMLDivElement>(null),floating=useRef<Window|null>(null),opening=useRef(false);
+ const [host,setHost]=useState<HTMLDivElement|null>(null),[supported,setSupported]=useState(false),[outside,setOutside]=useState(false),[notice,setNotice]=useState('');
+ const [pin,setPin]=useState(false),[minimized,setMinimized]=useState(false),[left,setLeft]=useState(false),[opaque,setOpaque]=useState(false),[tab,setTab]=useState<'review'|'chat'>('review'),[focused,setFocused]=useState(false);
+ const latest=useRef({ended,onClosedReturn});latest.current={ended,onClosedReturn};
+ const [editing,setEditing]=useState(false);
+ const protectedView=pin||focused||editing||needsReview||Boolean(question.trim())||error;
+ useEffect(()=>{if(!host)return;const observer=new MutationObserver(()=>setEditing(Boolean(host.querySelector('.image-review[data-editing="true"]'))));observer.observe(host,{subtree:true,attributes:true,attributeFilter:['data-editing'],childList:true});return()=>observer.disconnect();},[host]);
+ const [touched,setTouched]=useState(false);
+ useEffect(()=>{if(!touched)return;const timer=setTimeout(()=>setTouched(false),8000);return()=>clearTimeout(timer);},[touched]);
+ useEffect(()=>{const element=document.createElement('div');place.current?.append(element);setHost(element);setSupported('documentPictureInPicture' in window);return()=>{floating.current?.close();element.remove();};},[]);
+ useEffect(()=>{if(host){host.lang=locale;host.className=`app assistant-portal ${large?'large':''} ${outside?'in-pip':''}`;host.ownerDocument.documentElement.lang=locale;}},[host,locale,large,outside]);
+ useEffect(()=>{if(ended)floating.current?.close();},[ended]);
+ useEffect(()=>{if(pin||needsReview||question||error)setMinimized(false);},[pin,needsReview,question,error]);
+ function restore(){if(host)place.current?.append(host);floating.current=null;setOutside(false);setMinimized(false);if(!latest.current.ended)setNotice(w.closed);latest.current.onClosedReturn();}
+ async function openWindow(){
+  if(floating.current){floating.current.focus();return;}if(opening.current||!host)return;
+  opening.current=true;setNotice('');
+  try{
+   const next=await (window as unknown as {documentPictureInPicture:PipApi}).documentPictureInPicture.requestWindow({width:360,height:340});
+   floating.current=next;next.document.title='Digital Assistant';next.document.documentElement.lang=locale;
+   const base=next.document.createElement('base');base.href=document.baseURI;next.document.head.append(base);
+   for(const sheet of Array.from(document.styleSheets)){
+    try{const style=next.document.createElement('style');style.textContent=Array.from(sheet.cssRules).map(rule=>rule.cssText).join('\n');next.document.head.append(style);}
+    catch{if(sheet.href){const link=next.document.createElement('link');link.rel='stylesheet';link.href=sheet.href;next.document.head.append(link);}}
+   }
+   next.document.body.style.margin='0';next.document.body.append(host);setOutside(true);setTab('review');onCloseChat();
+   next.addEventListener('pagehide',restore,{once:true});
+  }catch{setNotice(w.fallback);}finally{opening.current=false;}
+ }
+ useImperativeHandle(ref,()=>({afterShare:()=>{setTab('review');setMinimized(false);if(supported&&!floating.current){setNotice(w.open);if(navigator.userActivation?.isActive)void openWindow();}},review:()=>{setTab('review');setMinimized(false);setTimeout(()=>host?.querySelector<HTMLElement>('#context-title')?.focus(),0);}}));
+ function toggleChat(){if(open){onCloseChat();setTab('review');}else{onOpen();setTab('chat');}try{floating.current?.resizeTo(open?360:740,open?340:600);}catch{/* Browser may clamp resizing; narrow tabs remain usable. */}}
+ return <><div className="floating-toolbar">{controls}{supported?<button id="open-floating-assistant" type="button" className="primary" onClick={()=>void openWindow()}>{w.open}</button>:<p>{w.fallback}</p>}{notice&&<p role="status">{notice}</p>}</div><div ref={place}/>{host&&createPortal(
+  <section className={`approval-workspace ${open?'chat-expanded':''} ${left?'review-left':''} ${opaque?'opaque':''} ${protectedView||touched?'protected':''}`} data-outside={outside} onPointerDown={()=>setTouched(true)} onFocusCapture={()=>setFocused(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setFocused(false);}}>
+   <header className="workspace-header"><span className="workspace-source">{sourceStatus} / <small role="status">{voiceCopy[locale].states[voiceStates.indexOf(voiceState)]}</small></span></header>
+   {minimized&&<button type="button" className="primary" onClick={()=>setMinimized(false)}>{w.expand} · {sourceStatus}</button>}<div hidden={minimized}>
+    <nav className="workspace-controls"><button type="button" aria-expanded={open} onClick={toggleChat}>{open?w.closeChat:w.chat}</button><button type="button" title={voiceState==='paused'?voiceCopy[locale].resume:w.pause} aria-label={voiceState==='paused'?voiceCopy[locale].resume:w.pause} onClick={onPause}><Icon kind="mic"/></button><button type="button" title={voiceCopy[locale].stop} aria-label={voiceCopy[locale].stop} onClick={onStopSpeaking}><Icon kind="stop"/></button><button type="button" className="stop" title={w.end} aria-label={w.end} onClick={onEnd}><Icon kind="end"/></button></nav>
+    {!open&&error&&<div className="capture-error"><p role="alert" className="error">{error}</p>{recovery}</div>}
+    {open&&<nav className="workspace-tabs"><button type="button" aria-pressed={tab==='review'} onClick={()=>setTab('review')}>{w.review}</button><button type="button" aria-pressed={tab==='chat'} onClick={()=>setTab('chat')}>{w.chat}</button></nav>}
+    <div className="workspace-columns" data-tab={tab}><div className="workspace-review" id="source-panel">{review}</div><div className="workspace-chat" hidden={!open}>{children}</div></div>
+    {!open&&caption&&<details className="compact-caption"><summary>{caption}</summary><p>{caption}</p></details>}<details className="workspace-options"><summary aria-label={w.options}>⋯</summary><button type="button" title={w.pin} aria-label={w.pin} aria-pressed={pin} onClick={()=>setPin(value=>!value)}><Icon kind="pin"/></button><button type="button" title={w.minimize} aria-label={w.minimize} disabled={pin||editing||needsReview||Boolean(question)||Boolean(error)} onClick={()=>setMinimized(true)}><Icon kind="minimize"/></button><button type="button" onClick={()=>setLeft(value=>!value)}>{w.layout}</button><label><input type="checkbox" checked={opaque} onChange={e=>setOpaque(e.target.checked)}/>{w.opaque}</label><p>{w.occlusion}</p></details>
+   </div>
+  </section>,host)}</>;
+});

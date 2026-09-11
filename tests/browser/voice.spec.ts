@@ -30,7 +30,7 @@ test('language focus does not start audio; Hindi activation localizes and handle
   expect(await page.evaluate(()=>(window as any).micRequests)).toBe(1);
 });
 
-test('local speech detection honors a slower pause, submits once, suppresses capture in playback, and resumes',async({page})=>{
+test('local speech detection honors a slower pause, submits once, keeps capture during playback, and resumes',async({page})=>{
   test.setTimeout(120000);await syntheticMicrophone(page);await login(page);
   let transcriptions=0,turns=0;page.on('request',req=>{if(req.url().endsWith('/transcriptions'))transcriptions++;if(req.url().endsWith('/turns'))turns++;});
   await page.locator('.voice-assistant select').selectOption('5000');await page.locator('.voice-assistant button.primary').click();
@@ -39,7 +39,7 @@ test('local speech detection honors a slower pause, submits once, suppresses cap
   const duration=await page.evaluate(()=>(window as any).injectSpeech());await page.waitForTimeout(duration*1000+2800);expect(transcriptions).toBe(0);
   await page.evaluate(()=>(window as any).injectSpeech());
   await expect.poll(()=>transcriptions,{timeout:20000}).toBe(1);
-  expect(await page.evaluate(()=>(window as any).inputTracks.every((track:MediaStreamTrack)=>track.readyState==='ended'))).toBe(true);
+  expect(await page.evaluate(()=>(window as any).inputTracks.some((track:MediaStreamTrack)=>track.readyState==='live'))).toBe(true);
   await expect(page.locator('.answer')).toHaveCount(1,{timeout:20000});
   await expect(page.locator('[data-voice-state=listening]')).toBeVisible({timeout:15000});
   expect(turns).toBe(1);await page.waitForTimeout(5500);expect(transcriptions).toBe(1);

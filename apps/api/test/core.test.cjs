@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createHash, randomUUID } = require('node:crypto');
-const { turnSchema, sourceSchema, approvalPayload, locales, containsSensitiveText } = require('@guide/contracts');
+const { turnSchema, sourceSchema, approvalPayload, enabledLocales: locales, containsSensitiveText } = require('@guide/contracts');
 const { Assistant } = require('../dist/assistant');
 const { Providers } = require('../dist/providers');
 const { Configuration, quotaSchema, operationReady } = require('../dist/config');
@@ -12,7 +12,7 @@ function source() { const s = { kind: 'screenshot', version: 1, capturedAt: new 
 const model = { status: 'answer', explanationEn: 'Choose Attach files.', draftEn: null, referencedLabels: ['label_1'], requiresFreshContext: false, completionBasis: 'not_completed' };
 const sessionDouble = () => ({ source: async () => {}, claim: async () => {}, finish: async () => {}, recent: async () => [] });
 
-test('all seven locales accept Unicode; draft language is explicit and independent', () => {
+test('all five enabled locales accept Unicode; draft language is explicit and independent', () => {
   for (const locale of locales) assert.ok(turnSchema.safeParse(turn({ question: 'हिन्दी বাংলা मराठी తెలుగు தமிழ் اردو', inputLocale: locale, replyLocale: locale })).success);
   assert.ok(!turnSchema.safeParse(turn({ taskKind: 'draft-text' })).success);
   assert.ok(turnSchema.safeParse(turn({ taskKind: 'draft-text', replyLocale: 'hi-IN', draftLocale: 'en-IN' })).success);
