@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+**/dist
+.git
+.agents
+.codex
+.env
+.env.*
+secrets
+config/quota-policy.json
+Digital_Assistant_Architecture
+test-results
+playwright-report

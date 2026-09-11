@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "verified": false,
+  "note": "Template only. Copy to quota-policy.json and enter actual account/model limits before app readiness may pass. Null is unknown, not unlimited.",
+  "groups": [
+    {
+      "id": "gemini-project-main",
+      "provider": "gemini",
+      "limits": [
+        {
+          "model": "REPLACE_WITH_CONFIGURED_MODEL",
+          "operation": "generate",
+          "rpm": null,
+          "tpm": null,
+          "rpd": null
+        }
+      ]
+    },
+    {
+      "id": "sarvam-account-main",
+      "provider": "sarvam",
+      "limits": [
+        {
+          "model": "saaras:v3",
+          "operation": "stt",
+          "rpm": null,
+          "tpm": null,
+          "rpd": null
+        },
+        {
+          "model": "sarvam-translate:v1",
+          "operation": "translate",
+          "rpm": null,
+          "tpm": null,
+          "rpd": null
+        },
+        {
+          "model": "bulbul:v3",
+          "operation": "tts",
+          "rpm": null,
+          "tpm": null,
+          "rpd": null
+        }
+      ]
+    }
+  ]
+}

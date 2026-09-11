@@ -1,0 +1,53 @@
+import { Injectable } from '@nestjs/common';
+import { approvalPayload, containsSensitiveText, turnSchema, type Answer } from '@guide/contracts';
+import { createHash } from 'node:crypto';
+import { Configuration } from './config';
+import { ApiError } from './errors';
+import { Sessions } from './sessions';
+import { Providers } from './providers';
+
+@Injectable()
+export class Assistant {
+  private readonly active = new Map<string, { sessionId: string; requestId: string; controller: AbortController }>();
+  constructor(private readonly config: Configuration, private readonly sessions: Sessions, private readonly providers: Providers) {}
+  cancel(ownerUid: string, sessionId: string, requestId?: string) {
+    const active = this.active.get(ownerUid);
+    if (active?.sessionId === sessionId && (!requestId || active.requestId === requestId)) active.controller.abort();
+  }
+  async turn(ownerUid: string, sessionId: string, input: unknown, disconnected?: AbortSignal): Promise<Answer> {
+    const parsed = turnSchema.safeParse(input);
+    if (!parsed.success) throw new ApiError('INVALID_INPUT');
+    const turn = parsed.data;
+    if (this.config.problems.length) throw new ApiError('SERVICE_UNAVAILABLE', 503);
+    if (this.active.has(ownerUid)) throw new ApiError('TURN_IN_PROGRESS', 409);
+    if (this.active.size >= 20) throw new ApiError('PROVIDER_BUSY', 429, 15000);
+    if (containsSensitiveText(turn.question) || turn.source?.reviewedLabels.some(l => containsSensitiveText(l.text))) throw new ApiError('PRIVACY_REVIEW_REQUIRED');
+    if (turn.source) {
+      const hash = createHash('sha256').update(approvalPayload(turn.source)).digest('hex');
+      if (hash !== turn.source.sanitizedHash) throw new ApiError('CONTEXT_REVIEW_REQUIRED');
+      if (Date.parse(turn.source.capturedAt) > Date.now() + 30_000) throw new ApiError('CONTEXT_STALE', 409);
+    }
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30_000), ...(disconnected ? [disconnected] : [])]);
+    this.active.set(ownerUid, { sessionId, requestId: turn.requestId, controller });
+    try {
+      await this.sessions.source(ownerUid, sessionId, turn);
+      await this.sessions.claim(ownerUid, sessionId, turn);
+      signal.throwIfAborted();
+      const labels = turn.source?.reviewedLabels.map(l => l.text) || [];
+      const questionEn = await this.providers.translate(turn.question, turn.inputLocale, 'en-IN', labels, signal);
+      if (containsSensitiveText(questionEn)) throw new ApiError('PRIVACY_REVIEW_REQUIRED');
+      const model = await this.providers.reason(questionEn, turn, signal);
+      signal.throwIfAborted();
+      const explanation = await this.providers.translate(model.explanationEn, 'en-IN', turn.replyLocale, labels, signal);
+      const draft = model.draftEn && turn.draftLocale ? { locale: turn.draftLocale, text: await this.providers.translate(model.draftEn, 'en-IN', turn.draftLocale, [], signal) } : null;
+      signal.throwIfAborted();
+      await this.sessions.finish(ownerUid, sessionId, turn.requestId);
+      signal.throwIfAborted();
+      return { requestId: turn.requestId, sourceVersion: turn.source?.version ?? null, status: model.status, explanation: { locale: turn.replyLocale, text: explanation }, draft, referencedLabels: (turn.source?.reviewedLabels || []).filter(l => model.referencedLabels.includes(l.id)), evidence: [{ kind: turn.source ? 'approved-labels' : turn.taskKind === 'draft-text' ? 'draft' : 'user-description' }], requiresFreshContext: model.requiresFreshContext, completionBasis: 'not_completed' };
+    } catch (error) {
+      if (signal.aborted) throw new ApiError(controller.signal.aborted || disconnected?.aborted ? 'TURN_CANCELED' : 'TURN_TIMEOUT', 408);
+      throw error;
+    } finally { this.active.delete(ownerUid); }
+  }
+}

@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+secrets/*
+!secrets/.gitkeep
+node_modules/
+.next/
+dist/
+coverage/
+*.log
+*.pem
+*.key
+firebase-admin.json
+
+config/quota-policy.json
+__pycache__/

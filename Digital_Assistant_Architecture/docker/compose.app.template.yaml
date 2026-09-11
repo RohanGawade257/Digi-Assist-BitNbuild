@@ -1,0 +1,115 @@
+# Revision 3 DEVELOPMENT template. Requires app source and lockfile.
+# Use from root with both Compose files. Never deploy this as production.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev.template
+      args:
+        APP_FILTER: '@guide/web'
+    environment:
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001/api/v1}
+    ports:
+    - 127.0.0.1:3000:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - node
+      - -e
+      - fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev.template
+      args:
+        APP_FILTER: '@guide/api'
+    ports:
+    - 127.0.0.1:3001:3001
+    secrets:
+    - source: firebase_admin
+      target: firebase-admin.json
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD
+      - node
+      - -e
+      - fetch('http://localhost:3001/api/v1/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-admin.json
+      REQUIRE_EMAIL_VERIFIED: ${REQUIRE_EMAIL_VERIFIED:-true}
+      MONGODB_URI: ${MONGODB_URI}
+      GEMINI_API_KEY_1: ${GEMINI_API_KEY_1}
+      GEMINI_API_KEY_2: ${GEMINI_API_KEY_2}
+      GEMINI_API_KEY_3: ${GEMINI_API_KEY_3}
+      GEMINI_API_KEY_4: ${GEMINI_API_KEY_4}
+      GEMINI_QUOTA_GROUP_1: ${GEMINI_QUOTA_GROUP_1:-gemini-project-main}
+      GEMINI_QUOTA_GROUP_2: ${GEMINI_QUOTA_GROUP_2:-gemini-project-main}
+      GEMINI_QUOTA_GROUP_3: ${GEMINI_QUOTA_GROUP_3:-gemini-project-main}
+      GEMINI_QUOTA_GROUP_4: ${GEMINI_QUOTA_GROUP_4:-gemini-project-main}
+      GEMINI_MODEL: ${GEMINI_MODEL}
+      GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL}
+      SARVAM_API_KEY_1: ${SARVAM_API_KEY_1}
+      SARVAM_API_KEY_2: ${SARVAM_API_KEY_2}
+      SARVAM_API_KEY_3: ${SARVAM_API_KEY_3}
+      SARVAM_QUOTA_GROUP_1: ${SARVAM_QUOTA_GROUP_1:-sarvam-account-main}
+      SARVAM_QUOTA_GROUP_2: ${SARVAM_QUOTA_GROUP_2:-sarvam-account-main}
+      SARVAM_QUOTA_GROUP_3: ${SARVAM_QUOTA_GROUP_3:-sarvam-account-main}
+      SARVAM_STT_MODEL: ${SARVAM_STT_MODEL:-saaras:v3}
+      SARVAM_TRANSLATION_MODEL: ${SARVAM_TRANSLATION_MODEL:-sarvam-translate:v1}
+      SARVAM_TTS_MODEL: ${SARVAM_TTS_MODEL:-bulbul:v3}
+      SARVAM_TTS_SPEAKER: ${SARVAM_TTS_SPEAKER:-shubh}
+      PORT: ${PORT:-3001}
+      API_ALLOWED_ORIGINS: ${API_ALLOWED_ORIGINS:-http://localhost:3000}
+      KEY_ROUTING_MODE: ${KEY_ROUTING_MODE:-primary-failover}
+      PROVIDER_MAX_ATTEMPTS: ${PROVIDER_MAX_ATTEMPTS:-2}
+      TURN_MAX_EXTRA_RETRIES: ${TURN_MAX_EXTRA_RETRIES:-2}
+      PROVIDER_TIMEOUT_MS: ${PROVIDER_TIMEOUT_MS:-20000}
+      TURN_EXECUTION_DEADLINE_MS: ${TURN_EXECUTION_DEADLINE_MS:-30000}
+      MAX_ACTIVE_TURNS_PER_USER: ${MAX_ACTIVE_TURNS_PER_USER:-1}
+      MAX_QUEUED_TURNS: ${MAX_QUEUED_TURNS:-20}
+      QUEUE_TIMEOUT_MS: ${QUEUE_TIMEOUT_MS:-15000}
+      GEMINI_APP_RPM_CAP: ${GEMINI_APP_RPM_CAP:-5}
+      SARVAM_APP_RPM_CAP: ${SARVAM_APP_RPM_CAP:-10}
+      QUOTA_POLICY_PATH: /app/config/quota-policy.json
+      CLOUD_SPEECH_ENABLED: ${CLOUD_SPEECH_ENABLED:-true}
+      STRICT_PRIVACY_MODE: ${STRICT_PRIVACY_MODE:-false}
+      SCREEN_CONTEXT_MODE: ${SCREEN_CONTEXT_MODE:-reviewed-labels-or-crop}
+      PERSIST_RAW_MEDIA: ${PERSIST_RAW_MEDIA:-false}
+      HISTORY_DEFAULT_ENABLED: ${HISTORY_DEFAULT_ENABLED:-false}
+      HISTORY_RETENTION_DAYS: ${HISTORY_RETENTION_DAYS:-30}
+      FEEDBACK_RETENTION_DAYS: ${FEEDBACK_RETENTION_DAYS:-90}
+      VOLATILE_SESSION_IDLE_MINUTES: ${VOLATILE_SESSION_IDLE_MINUTES:-15}
+      CAPTURE_SAMPLE_INTERVAL_MS: ${CAPTURE_SAMPLE_INTERVAL_MS:-1000}
+      MAX_IMAGE_BYTES: ${MAX_IMAGE_BYTES:-5242880}
+      MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-12000000}
+      MAX_AUDIO_SECONDS: ${MAX_AUDIO_SECONDS:-25}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+    - type: bind
+      source: ./config/quota-policy.json
+      target: /app/config/quota-policy.json
+      read_only: true
+      bind:
+        create_host_path: false
+secrets:
+  firebase_admin:
+    file: ./secrets/firebase-admin.json
