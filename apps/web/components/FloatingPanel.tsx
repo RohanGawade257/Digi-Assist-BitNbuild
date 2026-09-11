@@ -29,24 +29,70 @@ export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPan
  useEffect(()=>{if(ended)floating.current?.close();},[ended]);
  useEffect(()=>{if(pin||needsReview||question||error)setMinimized(false);},[pin,needsReview,question,error]);
  function restore(){if(host)place.current?.append(host);floating.current=null;setOutside(false);setMinimized(false);setSettings(false);setShowCaption(false);if(!latest.current.ended)setNotice(w.closed);latest.current.onClosedReturn();}
+ function repositionWindow(targetWidth: number, targetHeight: number) {
+  if (!floating.current) return;
+  try {
+   const win = floating.current;
+   const s = win.screen || window.screen;
+   const availW = s.availWidth;
+   const availH = s.availHeight;
+   const availLeft = (s as unknown as { availLeft?: number }).availLeft ?? 0;
+   const availTop = (s as unknown as { availTop?: number }).availTop ?? 0;
+   const targetX = Math.max(availLeft, availLeft + availW - targetWidth - 20);
+   const targetY = Math.max(availTop, availTop + availH - targetHeight - 32);
+   win.resizeTo(targetWidth, targetHeight);
+   win.moveTo(targetX, targetY);
+  } catch {/* Browser may restrict coordinates */}
+ }
  async function openWindow(){
   if(floating.current){floating.current.focus();return;}if(opening.current||!host)return;
   opening.current=true;setNotice('');
   try{
-   const next=await (window as unknown as {documentPictureInPicture:PipApi}).documentPictureInPicture.requestWindow({width:390,height:480});
+   const initialH = open ? 520 : caption ? 350 : 250;
+   const next=await (window as unknown as {documentPictureInPicture:PipApi}).documentPictureInPicture.requestWindow({width:380,height:initialH});
    floating.current=next;next.document.title=brand.title;next.document.documentElement.lang=locale;
    const base=next.document.createElement('base');base.href=document.baseURI;next.document.head.append(base);
    for(const sheet of Array.from(document.styleSheets)){
     try{const style=next.document.createElement('style');style.textContent=Array.from(sheet.cssRules).map(rule=>rule.cssText).join('\n');next.document.head.append(style);}
     catch{if(sheet.href){const link=next.document.createElement('link');link.rel='stylesheet';link.href=sheet.href;next.document.head.append(link);}}
    }
-   next.document.documentElement.classList.add('pip-document');next.document.body.style.margin='0';next.document.body.append(host);setOutside(true);setTab('review');onCloseChat();
+   next.document.documentElement.classList.add('pip-document');
+   next.document.documentElement.style.overflow='hidden';
+   next.document.body.style.overflow='hidden';
+   next.document.body.style.margin='0';
+   next.document.body.append(host);setOutside(true);setTab('review');onCloseChat();
+   setTimeout(()=>repositionWindow(380, initialH), 60);
    next.addEventListener('pagehide',restore,{once:true});
   }catch{setNotice(w.fallback);}finally{opening.current=false;}
  }
  useImperativeHandle(ref,()=>({afterShare:()=>{setTab('review');setMinimized(false);if(supported&&!floating.current){setNotice(w.open);if(navigator.userActivation?.isActive)void openWindow();}},review:()=>{setTab('review');setMinimized(false);setTimeout(()=>host?.querySelector<HTMLElement>('#context-title')?.focus(),0);}}));
- useEffect(()=>{if(!outside||open)return;try{floating.current?.resizeTo(390,minimized?200:idle&&!protectedView?380:480);}catch{/* Native size remains browser-controlled. */}},[outside,open,minimized,idle,protectedView]);
- function toggleChat(){if(open){onCloseChat();setTab('review');}else{onOpen();setTab('chat');}try{floating.current?.resizeTo(open?390:800,open?480:650);}catch{/* Browser may clamp resizing; narrow tabs remain usable. */}}
+ useEffect(()=>{
+  if(!outside)return;
+  const compactHeight=host?Math.min(Math.max(host.scrollHeight+42,230),410):250;
+  const targetHeight=open?520:minimized?96:compactHeight;
+  repositionWindow(380,targetHeight);
+ },[outside,open,minimized,idle,protectedView,caption,error,question,voiceState,host]);
+ useEffect(()=>{
+  if(!outside||!host||open||minimized)return;
+  const observer=new ResizeObserver(()=>{
+   const targetHeight=Math.min(Math.max(host.scrollHeight+42,230),410);
+   repositionWindow(380,targetHeight);
+  });
+  observer.observe(host);
+  return()=>observer.disconnect();
+ },[outside,host,open,minimized]);
+ function toggleChat(){
+  if(open){
+   onCloseChat();
+   setTab('review');
+   const compactH=host?Math.min(Math.max(host.scrollHeight+42,230),410):250;
+   repositionWindow(380,compactH);
+  }else{
+   onOpen();
+   setTab('chat');
+   repositionWindow(380,520);
+  }
+ }
  return <><div className="floating-toolbar">{controls}{supported?<button id="open-floating-assistant" type="button" className="primary" onClick={()=>void openWindow()}>{w.open}</button>:<p>{w.fallback}</p>}{notice&&<p role="status">{notice}</p>}</div><div ref={place}/>{host&&createPortal(
   <section className={`approval-workspace ${open?'chat-expanded':''} ${left?'review-left':''} ${opaque||highContrast?'opaque':''} ${protectedView?'protected':''} ${idle&&!protectedView?'pip-idle':''}`} data-outside={outside} onPointerEnter={event=>{if(event.pointerType!=='touch')setHovered(true);}} onPointerLeave={()=>setHovered(false)} onPointerMove={()=>setActivity(value=>value+1)} onPointerDown={()=>{setActivity(value=>value+1);setIdle(false);}} onFocusCapture={()=>setFocused(true)} onBlurCapture={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setFocused(false);}}>
    <header className="workspace-header"><span className="workspace-source"><BrandMark compact/><span className="source-label">{sourceStatus}</span><small role="status" data-state={voiceState}>{voiceState==='idle'?voiceCopy[locale].start:voiceCopy[locale].states[voiceStates.indexOf(voiceState)]}</small></span><button type="button" className="text-button" onClick={()=>setSettings(true)}>{d.settings}</button><button type="button" title={voiceCopy[locale].stop} aria-label={voiceCopy[locale].stop} onClick={onStopSpeaking}><Icon kind="stop"/></button></header>

@@ -1,15 +1,176 @@
 # VaaniSetu — Voice-First Digital Access Assistant
 
-PiP visual correction: `app/pip.css` clears copied document/root backgrounds and uses an 18% tinted panel without wallpaper or gradients. `FloatingPanel.tsx` fades a separate content layer to 20% after 1.5 seconds outside hover/focus, protecting consent, drafts, errors, editing and Keep visible. Status and Stop speaking remain readable. Explicit minimize/expand and high contrast remain available. Browser screenshots still show a white native backing; desktop transparency is not established.
+> A multilingual, voice-first accessibility layer that allows people who cannot comfortably read, type, navigate complicated websites, or understand English interfaces to access digital information simply by talking.
 
-A multilingual, voice-first accessibility layer that allows people who cannot comfortably read, type, navigate complicated websites, or understand English interfaces to access digital information simply by talking.
+VaaniSetu provides an accessible, voice-guided companion for navigating unfamiliar websites, forms, public portals, and drafting communications. It acts as an intelligent assistant with speech interaction, smart screen analysis via Document Picture-in-Picture, and privacy-preserving approval flows.
 
-Brand and materials are centralized in `apps/web/lib/brand.ts`, `background.ts`, `components/Glass.tsx` and `app/glass.css`. The selected original is `Assests/bg3.png`; optimized desktop/mobile WebPs are 11,906/4,576 bytes. Rebuild copies with `python scripts/prepare-background.py` (Pillow); originals are untouched. Configure paths, focal position, tint or gradient fallback in `background.ts`. Accessibility includes a shared opaque/high-contrast choice and a no-backdrop-filter fallback. PiP uses a local tinted surface, never a desktop screenshot or a claim of desktop transparency. VaaniSetu branding and five fixed Sarvam introductions changed; API identifiers, Firebase accounts, databases and environment variables retain compatibility.
-An accessible multilingual guide to unfamiliar websites, forms, registration and email drafting. It helps older adults, people facing language or digital-literacy barriers, and people with disabilities. The user performs all external actions.
+Currently supported languages: **Hindi (हिन्दी), English, Bengali (বাংলা), Marathi (मराठी), and Telugu (తెలుగు)**.
 
-This version supports Hindi, English, Bengali, Marathi and Telugu. Tamil and Urdu are disabled in selectors and new provider requests because of Tamil accuracy and unsupported Urdu speech. A real Document Picture-in-Picture window holds compact image approval and expandable chat on supported desktop browsers. Local speech detection interrupts assistant playback, including the introduction, while retaining the next utterance. See [progress](progress.md), [handoff](context.md), and historical [provider validation](docs/validation.md). Physical microphone performance and native application focus remain unverified.
+---
 
-The redesigned interface uses a short language-first introduction, readable teal/neutral surfaces, a conversation-and-screen workspace, and labeled Account, History, Help and Accessibility dialogs. Mobile switches explicitly between Conversation and Screen. One shared portal moves into a dedicated 390×480 PiP controller; only expanded chat/editor content scrolls. Provider, microphone and capture ownership are unchanged. Screenshots and focused verification are recorded in progress.md.
+## 🚀 Quickstart: Run Locally in 5 Minutes (Beginner Guide)
+
+Follow these step-by-step instructions if you have just cloned the repository and want to run it on your machine.
+
+### 📋 Prerequisites
+
+Before starting, make sure you have the following installed:
+1. **Node.js**: Version `22.20.0` or higher ([Download Node.js](https://nodejs.org/))
+2. **pnpm**: Version `10.x` or higher  
+   *If you don't have pnpm installed, run:*
+   ```bash
+   npm install -g pnpm
+   ```
+3. **Docker & Docker Desktop** (Recommended for running MongoDB easily): ([Download Docker Desktop](https://www.docker.com/products/docker-desktop/))  
+   *Ensure Docker Desktop is open and running.*
+4. **Git**
+
+---
+
+### Step 1: Clone and Navigate to the Repository
+
+```bash
+git clone <YOUR-REPOSITORY-URL>
+cd bitNbuild
+```
+
+---
+
+### Step 2: Install Dependencies
+
+Install all dependencies across the monorepo using `pnpm`:
+
+```bash
+pnpm install
+```
+
+---
+
+### Step 3: Configure Environment Variables
+
+Create your local `.env` file by copying the template:
+
+- **Windows (PowerShell):**
+  ```powershell
+  Copy-Item .env.example .env
+  ```
+- **macOS / Linux (Bash):**
+  ```bash
+  cp .env.example .env
+  ```
+
+Now, open the newly created `.env` file in your code editor (e.g., VS Code). You will configure three main services:
+
+#### 1. Google Gemini AI (Required for answering questions & vision analysis)
+- Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
+- Fill in:
+  ```env
+  GEMINI_MODEL=gemini-2.5-flash
+  GEMINI_API_KEY_1=your_gemini_api_key_here
+  ```
+
+#### 2. Sarvam AI (Required for Indian language translation, Speech-to-Text & Text-to-Speech)
+- Obtain an API key from the [Sarvam AI Dashboard](https://dashboard.sarvam.ai/).
+- Fill in:
+  ```env
+  SARVAM_API_KEY_1=your_sarvam_api_key_here
+  ```
+
+#### 3. Firebase Authentication (Required for private user accounts & sessions)
+- Create a project on [Firebase Console](https://console.firebase.google.com/).
+- Enable **Email/Password** authentication under *Authentication > Sign-in method*.
+- In *Project Settings > General*, create a Web App and copy the configuration into your `.env`:
+  ```env
+  FIREBASE_PROJECT_ID=your-project-id
+  NEXT_PUBLIC_FIREBASE_API_KEY=your-web-api-key
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+  NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
+  ```
+- In *Project Settings > Service accounts*, click **Generate new private key**, and save the downloaded JSON file as:
+  ```
+  secrets/firebase-admin.json
+  ```
+
+#### 4. MongoDB Credentials
+- Run the setup helper to generate a secure local Mongo password and update your `.env`:
+  ```powershell
+  powershell -NoProfile -File scripts/setup-local.ps1
+  ```
+  *(Or manually set `MONGO_ROOT_PASSWORD` and `MONGODB_URI` inside `.env`).*
+
+---
+
+### Step 4: Start MongoDB Database
+
+The easiest way to start MongoDB with all required configurations is via Docker:
+
+```bash
+docker compose up -d mongo
+```
+*This launches MongoDB on port `27018` in the background.*
+
+---
+
+### Step 5: Start the Development Server
+
+Start both the Web Frontend and the Backend API simultaneously:
+
+```bash
+pnpm dev
+```
+
+This command will:
+1. Automatically build shared contract packages (`@guide/contracts`).
+2. Start the **Next.js Web Frontend** on [http://localhost:3000](http://localhost:3000).
+3. Start the **NestJS Backend API** on [http://localhost:3001](http://localhost:3001).
+
+---
+
+### Step 6: Open the Application in Your Browser
+
+1. Open **Google Chrome** (or Edge/Brave) and visit:
+   ```
+   http://localhost:3000
+   ```
+2. Verify backend health by checking:
+   ```
+   http://localhost:3001/api/v1/health
+   ```
+3. Select your preferred language (Hindi, English, Marathi, Bengali, or Telugu) and click **Continue** to start testing the voice assistant or screen sharing!
+
+---
+
+### 🛠️ Common Useful Commands
+
+| Task | Command |
+| :--- | :--- |
+| **Start full project (Web + API)** | `pnpm dev` |
+| **Start Web frontend only** | `pnpm --filter @guide/web dev` |
+| **Start Backend API only** | `pnpm --filter @guide/api dev` |
+| **Build for production** | `pnpm build` |
+| **Run TypeScript typecheck** | `pnpm typecheck` |
+| **Run test suite** | `pnpm test` |
+| **Stop background MongoDB** | `docker compose down` |
+
+---
+
+### ❓ Troubleshooting FAQ
+
+- **Port already in use error (`EADDRINUSE: 3000` or `3001`)**:  
+  Make sure you don't have another dev server or container running. If Docker has web/api containers running, stop them with:
+  ```bash
+  docker compose stop api web
+  ```
+- **MongoDB connection failed**:  
+  Ensure Docker Desktop is running and execute `docker compose up -d mongo`. Check that the port `27018` matches what's configured in your `.env`.
+- **Microphone / Voice input not working**:  
+  Ensure your browser has granted microphone permission to `http://localhost:3000`. Chrome blocks microphone access if the site is not localhost or HTTPS.
+- **Floating assistant window (PiP) not appearing**:  
+  The floating window uses Chrome's Document Picture-in-Picture API. Use Google Chrome or a Chromium browser version 116+ on desktop.
+
+---
+
 ## What is implemented
 
 - Activating a language selects the interface/input/reply locale, plays its pregenerated Sarvam introduction, requests microphone permission and then listens. Focus alone does not activate voice. Start voice assistant is the retry action; Continue keeps typing available.
@@ -20,8 +181,9 @@ The redesigned interface uses a short language-first introduction, readable teal
 - Capture current screen and send reads a fresh frame on every activation after revocable, localized session/source consent. No question is required: image-only requests return an overview and a localized follow-up. Optional Review before sending and uploads retain exact-image review and approval. Frozen crops survive background pixel changes; refreshing or editing clears approval. Approved images are always described as snapshots. Label-only sources retain their separate freshness checks and text-only alternative.
 - One self-hosted neural VAD stays active during playback, with browser echo cancellation/noise suppression and local playback-reference correlation. Confirmed speech pauses audio, invalidates late work, preserves 800 ms of pre-roll and submits once after approximately 2 seconds of silence (adjustable). Local PCM is transient. Stop speaking and localized stop commands remain available; speaker echo may require headphones.
 - Voice activation discloses automatic Sarvam transcription and Gemini questions. Screen-sending consent and optional exact-image approval stay separate. Captions, repeat, slower, pause, typed input and End remain available.
-- One portal-backed PiP window requests 390×480 pixels; browsers may clamp dimensions. Open it with the clear action after sharing if the picker consumed activation. Chat expands beside Review, can swap sides, and uses tabs at narrow widths. Pin, minimize, high contrast and reduced motion are supported. Closing returns controls and drafts to the page; End stops capture, microphone and playback. Unsupported browsers get an explicit side-by-side page fallback, without always-on-top claims.
-- Whole-display capture may include the assistant or obscure task content. Prefer a target tab/window, move the native panel or crop the snapshot. No desktop transparency, click-through, capture exclusion or hidden-content recovery is promised.
+- One portal-backed PiP window: Compact by default, automatically docks to the bottom-right corner of the desktop, auto-expands to comfortable height when chat is opened, and snaps back down to compact size when chat is closed. Pin, minimize, high contrast and reduced motion are supported. Closing returns controls and drafts to the page; End stops capture, microphone and playback.
+- Liquid glassmorphic aesthetic with ambient background refraction orbs, text shimmer animations, and floating card physics.
+- Custom 404 page (`/_not-found`) matching the glassmorphic brand aesthetic with multilingual navigation.
 - Saved preferences; history off by default. Optional saved sessions retain their latest 50 turns for 30 days. End preserves opted-in history; Delete erases it. Optional feedback starts with no rating selected, works after End assistance, requires consent and expires after 90 days. Account deletion requires recent authentication and removes Firebase identity and owned application data.
 - Bounded provider streams/deadlines, cancellation, persistent turn/transcription deduplication, shared atomic Mongo quotas, bounded queue/retries and same-account credential replacement.
 
@@ -29,9 +191,9 @@ The redesigned interface uses a short language-first introduction, readable teal
 
 No external clicking, submission, payments or email sending occurs. Official-rule questions receive an explicit evidence limitation. No raw screenshot, unreviewed OCR or recording is persisted.
 
-## Repository
+## Repository Structure
 
-- `apps/web`: Next.js UI, Firebase client, capture/recording and localized controls.
+- `apps/web`: Next.js UI, Firebase client, capture/recording, glassmorphism design and localized controls.
 - `apps/api`: NestJS, Firebase Admin, Mongo, sessions, quotas and provider adapters.
 - `packages/contracts`: strict shared schemas, label protection and media validation.
 - `config`, `docker`, `compose.yaml`: local deployment and quota template.
@@ -40,7 +202,7 @@ No external clicking, submission, payments or email sending occurs. Official-rul
 
 Git branch is `main`; user work is preserved. Credentials, root `.env`, local quota policy, build outputs and test traces are ignored. Dependencies and container bases are pinned; the lockfile is reproducible.
 
-## Start with Docker (PowerShell)
+## Start with Docker (Full Container Stack)
 
 Docker Desktop must be running Linux containers. Setup preserves existing configuration and generates only local Mongo credentials.
 
@@ -55,7 +217,7 @@ Website: **http://localhost:3000**. API health: **http://localhost:3001/api/v1/h
 
 Readiness requires Mongo, identity and the Gemini operation policy. Sarvam translation, transcription and speech output expose independent readiness flags and stay gated if their own policies are pending; they do not block English Gemini-only questions. Use `docker compose down` to stop while retaining data; adding `-v` deletes the database volume. Do not print full `docker compose config` to shared logs because it expands secrets.
 
-## Configuration
+## Advanced Configuration & Quotas
 
 Edit the ignored root `.env` and `config/quota-policy.json` locally. Server keys must never use a `NEXT_PUBLIC_` name.
 
@@ -64,7 +226,7 @@ Edit the ignored root `.env` and `config/quota-policy.json` locally. Server keys
 3. Set a supported `GEMINI_MODEL` and `GEMINI_API_KEY_1`. Slots 2–4 are optional.
 4. Set `SARVAM_API_KEY_1`; slots 2–3 are optional. Implemented models are `sarvam-translate:v1`, `saaras:v3` and `bulbul:v3` (speaker `shubh`). STT/TTS choices are fixed to the validated adapter contracts.
 5. Use quota schema v3 from `config/quota-policy.example.json`: each account group has separate API operations and per-metric statuses. `verified` requires a positive value and evidence; `unpublished` requires evidence and has no invented value; `unverified` keeps that API gated. A verified RPM cap is required. Mark each operation verified only after establishing its applicable policy. Keys on one account share that operation budget; secondary identities never evade a cap. Legacy v2 remains readable.
-6. Cloud microphone upload defaults off: `STRICT_PRIVACY_MODE=true`. This local instance now uses `false` with the user's explicit approval. In-app voice activation consent or manual recording-upload consent remains mandatory; image approval is separate.
+6. Cloud microphone upload defaults off: `STRICT_PRIVACY_MODE=true`. This local instance uses `false` with explicit approval. In-app voice activation consent or manual recording-upload consent remains mandatory; image approval is separate.
 7. Rebuild/restart with `docker compose up --build -d`. Public Firebase configuration is embedded in the web build.
 
 Current setup: Firebase Admin and provider credentials validate. The user confirmed Gemini 3.5 Flash Lite at 15 RPM, 250000 TPM and 500 RPD. Sarvam free tier is treated as Starter: translation 60 RPM, REST transcription 60 RPM and Bulbul v3 30 RPM. Its REST TPM/RPD values are unpublished, not guessed or claimed unlimited. Policies and cooldowns are per API; each account's keys share them. These values are recorded only in the ignored local policy, not pre-verified in the template. [Sarvam rate-limit table](https://docs.sarvam.ai/api/getting-started/ratelimits).
@@ -97,15 +259,6 @@ An opt-in developer check, `node scripts/check-live-auth.cjs --run`, creates a u
 Tested host: Node22.20.0, pnpm10.30.3. Containers: Node24.13.0 and Mongo8.0.20, pinned by digest. Baseline majors: Next16, React19, Nest11, Firebase12, Admin14, Mongo driver7, TypeScript5.9.
 
 ```powershell
-pnpm install --frozen-lockfile
-docker compose up -d mongo
-docker compose stop api web
-pnpm dev
-```
-
-The web loads root public environment values; API development compiles on startup and needs a restart after API changes. Docker and host development cannot both occupy ports3000/3001.
-
-```powershell
 pnpm typecheck
 pnpm test
 pnpm test:integration
@@ -116,7 +269,7 @@ pnpm check:docs
 pnpm audit --prod
 ```
 
-Browser tests need local Mongo and either the running Docker web or a host production build. They start an isolated fixture API on4101; Firebase REST responses and AI are explicit test doubles. No production auth bypass or fake-answer mode exists. Tests create unique `guide_test_*` databases and delete only their own database. Playwright teardown also performs cleanup on Windows. Use `pnpm docs:api` after shared schema changes.
+Browser tests need local Mongo and either the running Docker web or a host production build. They start an isolated fixture API on 4101; Firebase REST responses and AI are explicit test doubles. No production auth bypass or fake-answer mode exists. Tests create unique `guide_test_*` databases and delete only their own database. Playwright teardown also performs cleanup on Windows. Use `pnpm docs:api` after shared schema changes.
 
 Current focused results are in progress.md; use `pnpm exec playwright test tests/browser/capture-send.spec.ts --workers=1 --output=test-results/capture-focused`. Earlier full-suite/provider evidence in docs/validation.md predates the compact workspace and is historical, not a claim that the old suite was rerun. Automated checks do not establish physical microphone, native-app focus, screen-reader or human language quality.
 
@@ -128,8 +281,8 @@ The focused PiP test saves its synthetic compact preview as `test-results/floati
 
 Default-off content lives in browser memory and a bounded six-turn server cache with 15-minute idle expiry. Idle warnings preserve typed drafts. Account-deletion tombstones contain only the Firebase UID and deletion flag to block late writes. Saved content and feedback are owner-filtered and expiry-checked before Mongo TTL cleanup.
 
-Screenshots support PNG/JPEG/WebP under5MiB/12MP, with header checks before decoding. On-demand desktop captures read the active sharing video directly, with a new capture ID and timestamp; cached thumbnails and old crops/masks are never capture inputs. Review mode samples changes locally without resetting its frozen crop. The browser normalizes approved images to metadata-free PNG (at most 1600 pixels per side); the API permits at most 2 MiB, 2048 pixels per side and 4 MP, checks full PNG structure/raster/hash, and authenticates before parsing the 3 MiB turn envelope. The preview is exactly the bytes sent through Gemini inlineData. Review-mode image edits/refresh require fresh approval; default capture consent is revoked when sharing ends or the source changes. Strict privacy disables on-demand sending. Images are not saved in app history or logs. Masking does not guarantee privacy: inspect the final image yourself. If visual review is difficult, select labels only or remove the source and type a public instruction. No background uploads or continuous cloud streaming occur; analysis runs on Capture and send or submitted questions. Every image is a snapshot, never a live view.
+Screenshots support PNG/JPEG/WebP under 5 MiB / 12 MP, with header checks before decoding. On-demand desktop captures read the active sharing video directly, with a new capture ID and timestamp; cached thumbnails and old crops/masks are never capture inputs. Review mode samples changes locally without resetting its frozen crop. The browser normalizes approved images to metadata-free PNG (at most 1600 pixels per side); the API permits at most 2 MiB, 2048 pixels per side and 4 MP, checks full PNG structure/raster/hash, and authenticates before parsing the 3 MiB turn envelope. The preview is exactly the bytes sent through Gemini inlineData. Review-mode image edits/refresh require fresh approval; default capture consent is revoked when sharing ends or the source changes. Strict privacy disables on-demand sending. Images are not saved in app history or logs. Masking does not guarantee privacy: inspect the final image yourself. If visual review is difficult, select labels only or remove the source and type a public instruction. No background uploads or continuous cloud streaming occur; analysis runs on Capture and send or submitted questions. Every image is a snapshot, never a live view.
 
-Canceling discards late results but cannot guarantee an upstream request was unbilled. A reused turn/transcription ID fails safely. Queue wait is bounded to15 seconds. Translation/generation calls allow45 seconds within a90-second turn; speech calls allow20 seconds within a30-second operation. Upstream timeouts use504 rather than408 to prevent automatic POST replay. Deployment supports one API replica because cancellation/context are process-local.
+Canceling discards late results but cannot guarantee an upstream request was unbilled. A reused turn/transcription ID fails safely. Queue wait is bounded to 15 seconds. Translation/generation calls allow 45 seconds within a 90-second turn; speech calls allow 20 seconds within a 30-second operation. Upstream timeouts use 504 rather than 408 to prevent automatic POST replay. Deployment supports one API replica because cancellation/context are process-local.
 
 Human screen-reader testing, native listening, physical capture/microphone devices, signup/email delivery, remaining live translation/STT combinations, and representative-user evaluation remain open. There is no public deployment. Production hardening such as minimal runtime images, HTTPS, restricted Mongo credentials and backup policy must be completed before public hosting.

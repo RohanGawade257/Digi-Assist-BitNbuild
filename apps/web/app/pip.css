@@ -1,5 +1,7 @@
 /* Only the native PiP document. Transparent HTML is not desktop transparency. */
-html.pip-document,html.pip-document body,html.pip-document .assistant-portal.in-pip{background:transparent!important;background-image:none!important;box-shadow:none!important;min-height:0}
+html.pip-document,html.pip-document body,html.pip-document .assistant-portal.in-pip{background:transparent!important;background-image:none!important;box-shadow:none!important;min-height:0;overflow:hidden!important;scrollbar-width:none!important}
+html.pip-document ::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+.pip-document .assistant-portal.in-pip{padding:4px}
 .pip-document .in-pip .approval-workspace{background:rgba(225,241,234,.18)!important;background-image:none!important;box-shadow:inset 0 1px 0 #ffffff55!important;outline:none;border:1px solid #668b7d66;backdrop-filter:blur(16px) saturate(110%)}
 .pip-document .approval-workspace::before,.pip-document .approval-workspace::after,.pip-document body::before,.pip-document body::after,.pip-document .assistant-portal::before,.pip-document .assistant-portal::after{content:none!important;background:none!important;box-shadow:none!important}
 .pip-document .workspace-review,.pip-document .context-card,.pip-document .instant-capture{background:transparent!important;background-image:none!important;box-shadow:none!important}
