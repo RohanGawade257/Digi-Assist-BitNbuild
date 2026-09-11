@@ -2,9 +2,9 @@
   "hi-IN/intro": {
     "model": "bulbul:v3",
     "speaker": "shubh",
-    "textSha256": "cde46c44d90f9e653e890181db35be70217fd5b88e108e56f7f5bcff5a5813fd",
-    "audioSha256": "291410994654e7bab2d67c98880ea87c81ccb7d3d04ca00e462afdaf67dd5cb2",
-    "bytes": 885484
+    "textSha256": "009d2fff2f94f0371bc32a93a54b16e44e2e44e768d8baf9017dd22c1d28d784",
+    "audioSha256": "e1fb4325855b734f2d7052c13e35670c84acac43909bb25fb6c3f03a77e3bd06",
+    "bytes": 901868
   },
   "hi-IN/unclear": {
     "model": "bulbul:v3",
@@ -58,9 +58,9 @@
   "en-IN/intro": {
     "model": "bulbul:v3",
     "speaker": "shubh",
-    "textSha256": "e2c8edf0bfa1b6022a17929f6a28239d5fbe9a2f85faad7a9469cbb0a926db88",
-    "audioSha256": "a89d58f35ef59023d9870a0bd1aa5621e099a8d7834b6c0515c3fb1438814e5e",
-    "bytes": 840428
+    "textSha256": "dabe90bd9fdfd515bd60ed4ae0413c237f8339b2aebc395d4c13b36ff93b1e44",
+    "audioSha256": "10df8fad11a5ac4faf099a78835b61533a3699a5eded2d64cffc74cc2f85da3a",
+    "bytes": 852716
   },
   "en-IN/unclear": {
     "model": "bulbul:v3",
@@ -114,9 +114,9 @@
   "bn-IN/intro": {
     "model": "bulbul:v3",
     "speaker": "shubh",
-    "textSha256": "0a702e352e515fad10a0d95d9a5a05343d887ede1376d80230bd2af2c8ebd9e8",
-    "audioSha256": "748d84772376fbba9ec3b7ec70b4ce347b9fc85615141f807a898b15a236c825",
-    "bytes": 749612
+    "textSha256": "6a2a98c8eeb8af752d9d144af8ca7d8d1ff4ae9cd2ffecd66bc0ac92c90ad97f",
+    "audioSha256": "9a7f69a171f25abb4ab24b769f13d0d98b1512cb1072c3061f87f2dd29a8af0a",
+    "bytes": 880684
   },
   "bn-IN/unclear": {
     "model": "bulbul:v3",
@@ -170,9 +170,9 @@
   "mr-IN/intro": {
     "model": "bulbul:v3",
     "speaker": "shubh",
-    "textSha256": "a205720dadc5dc43a6bb1dbf3d945ae59e919d72b8fdb35997f652759bbffa3e",
-    "audioSha256": "bf3b5973bf70007898d6653043cf1df470cf3b945667161e63e2b32b86e00727",
-    "bytes": 757804
+    "textSha256": "e51ec9452897ddd9ca267d1b87661cfa6ef817221da0a4547350f83225912084",
+    "audioSha256": "cfc251de46cb6fa0a9383e0e9be415e22d57b6e156789f3c1df4d504253f90c8",
+    "bytes": 782380
   },
   "mr-IN/unclear": {
     "model": "bulbul:v3",
@@ -226,9 +226,9 @@
   "te-IN/intro": {
     "model": "bulbul:v3",
     "speaker": "shubh",
-    "textSha256": "61e6c93b6ee93275b29b53a38628fe77ad6fef7fb93df20a54f78632ad14af45",
-    "audioSha256": "fe42c7025758bc6766cdab64745a7588c3254ac800121fb51acf7b286a9330aa",
-    "bytes": 819244
+    "textSha256": "b2d41c49f2c29d1938b268edc57b4af9e10657dc62ca7784427c9bf8522db758",
+    "audioSha256": "8feb2898846910d11fb65cb98134cb8dd146afebbd37868fb75cf10b79eb2123",
+    "bytes": 983084
   },
   "te-IN/unclear": {
     "model": "bulbul:v3",

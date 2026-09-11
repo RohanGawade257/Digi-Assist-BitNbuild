@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './styles.css';
 import './redesign.css';
-export const metadata: Metadata = { title: 'Digital Assistant — One step at a time', description: 'Understand unfamiliar websites and prepare drafts in your language.' };
+import './glass.css';
+import {brand} from '../lib/brand';
+export const metadata: Metadata = { title: brand.title, description: brand.description, applicationName:brand.name, manifest:'/manifest.webmanifest', icons:{icon:'/vaanisetu.svg',apple:'/vaanisetu.svg'} };
 export default function Layout({ children }: { children: React.ReactNode }) { return <html lang="en"><body>{children}</body></html>; }

@@ -1,0 +1,1 @@
+export const brand={name:'VaaniSetu',title:'VaaniSetu — Voice-First Digital Access Assistant',description:'A multilingual, voice-first accessibility layer that allows people who cannot comfortably read, type, navigate complicated websites, or understand English interfaces to access digital information simply by talking.'};

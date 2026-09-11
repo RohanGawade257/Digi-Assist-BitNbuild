@@ -1,5 +1,8 @@
-# Digital Assistant
+# VaaniSetu — Voice-First Digital Access Assistant
 
+A multilingual, voice-first accessibility layer that allows people who cannot comfortably read, type, navigate complicated websites, or understand English interfaces to access digital information simply by talking.
+
+Brand and materials are centralized in `apps/web/lib/brand.ts`, `background.ts`, `components/Glass.tsx` and `app/glass.css`. The selected original is `Assests/bg3.png`; optimized desktop/mobile WebPs are 11,906/4,576 bytes. Rebuild copies with `python scripts/prepare-background.py` (Pillow); originals are untouched. Configure paths, focal position, tint or gradient fallback in `background.ts`. Accessibility includes a shared opaque/high-contrast choice and a no-backdrop-filter fallback. PiP uses a local tinted surface, never a desktop screenshot or a claim of desktop transparency. VaaniSetu branding and five fixed Sarvam introductions changed; API identifiers, Firebase accounts, databases and environment variables retain compatibility.
 An accessible multilingual guide to unfamiliar websites, forms, registration and email drafting. It helps older adults, people facing language or digital-literacy barriers, and people with disabilities. The user performs all external actions.
 
 This version supports Hindi, English, Bengali, Marathi and Telugu. Tamil and Urdu are disabled in selectors and new provider requests because of Tamil accuracy and unsupported Urdu speech. A real Document Picture-in-Picture window holds compact image approval and expandable chat on supported desktop browsers. Local speech detection interrupts assistant playback, including the introduction, while retaining the next utterance. See [progress](progress.md), [handoff](context.md), and historical [provider validation](docs/validation.md). Physical microphone performance and native application focus remain unverified.

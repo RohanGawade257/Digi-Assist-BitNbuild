@@ -1,0 +1,2 @@
+import {brand} from '../lib/brand';
+export function BrandMark({compact=false}:{compact?:boolean}){return <span className={`vaani-wordmark ${compact?'compact':''}`}><svg viewBox="0 0 48 48" width="44" height="44" fill="none" aria-hidden="true"><rect width="48" height="48" rx="15" fill="currentColor"/><path d="M9 32h30M12 32c0-12 24-12 24 0M18 16v5m6-10v12m6-7v5" stroke="#fff" strokeWidth="2.8" strokeLinecap="round"/></svg><span>{brand.name}{!compact&&<small>Voice-First Digital Access Assistant</small>}</span></span>;}
