@@ -17,14 +17,14 @@ test('this version offers five languages and rejects disabled transcription inpu
 });
 
 test('five retained languages keep translated conversations and drafts',async({page})=>{
- await login(page);await page.getByRole('button',{name:'Open chat',exact:true}).click();await page.getByRole('button',{name:'Language and comfort',exact:true}).click();
+ await login(page);await page.getByRole('button',{name:'Open chat',exact:true}).click();
  for(const [index,locale] of enabledLocales.entries()){
-  await page.locator('#preferences select').first().selectOption(locale);await page.locator('.floating-toolbar button[aria-controls=chat]').click();
+  await page.locator('.topbar nav button').first().click();await page.locator('#preferences select').first().selectOption(locale);await page.locator('.app-dialog[open] > header button').click();await page.locator('.floating-toolbar button[aria-controls=chat]').click();
   await page.locator('#question').fill('Explain a public instruction');await page.locator('.composer input[type=checkbox]').check();
   await page.locator('#question').press('Enter');await expect(page.locator('.conversation-turn')).toHaveCount(index+1);
   await expect(page.locator('.conversation-turn').last().locator(`.answer p[lang="${locale}"]`).first()).toBeVisible();
  }
- await page.locator('#question').fill('Keep this draft');await page.locator('#preferences select').first().selectOption('en-IN');await expect(page.locator('#question')).toHaveValue('Keep this draft');
+ await page.locator('#question').fill('Keep this draft');await page.locator('.topbar nav button').first().click();await page.locator('#preferences select').first().selectOption('en-IN');await page.locator('.app-dialog[open] > header button').click();await expect(page.locator('#question')).toHaveValue('Keep this draft');
 });
 
 test('consumed share activation offers one explicit floating-window action',async({page,context})=>{

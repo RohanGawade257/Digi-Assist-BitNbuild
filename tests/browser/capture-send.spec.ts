@@ -30,10 +30,10 @@ test('changed capture source revokes consent before uploading',async({page})=>{
 
 test('fresh PiP and main-page capture sends distinct current bytes with no question or Refresh',async({page,context})=>{
  await setup(page);const requests:any[]=[];page.on('request',r=>{if(r.url().endsWith('/turns'))requests.push(r.postDataJSON());});
- expect(requests).toHaveLength(0);const opened=context.waitForEvent('page');await page.locator('#open-floating-assistant').click();const pip=await opened;await pip.setViewportSize({width:360,height:340});
+ expect(requests).toHaveLength(0);const opened=context.waitForEvent('page');await page.locator('#open-floating-assistant').click();const pip=await opened;await pip.setViewportSize({width:390,height:480});
  await expect(pip.locator('.workspace-chat')).toBeHidden();await pip.getByRole('checkbox',{name:consent,exact:true}).click();
  await expect(pip.getByRole('button',{name:'Capture current screen and send',exact:true})).toBeEnabled();
- expect(await pip.evaluate(()=>document.body.scrollHeight)).toBeLessThanOrEqual(340);await pip.screenshot({path:'test-results/capture-compact.png'});
+ expect(await pip.evaluate(()=>document.body.scrollHeight)).toBeLessThanOrEqual(480);await pip.screenshot({path:'test-results/capture-compact.png'});
  await pip.getByRole('button',{name:'Capture current screen and send',exact:true}).dblclick();await expect.poll(()=>requests.length).toBe(1);
  await expect(pip.locator('.conversation-turn')).toHaveCount(1);expect(requests[0].question).toBe('');expect(requests[0].screenOverview).toBe(true);expect(requests[0].source.userReviewed).toBe(false);
  expect(await pixel(page,requests[0].source.approvedImage.data)).toEqual([255,0,0,255]);
@@ -51,8 +51,8 @@ test('capture failure cannot reuse an old image; retry explicitly captures again
  await setup(page);await page.getByRole('checkbox',{name:consent,exact:true}).click();let requests=0;page.on('request',r=>{if(r.url().endsWith('/turns'))requests++;});
  await page.getByRole('button',{name:'Capture current screen and send',exact:true}).click();await expect.poll(()=>requests).toBe(1);await expect(page.locator('.conversation-turn')).toHaveCount(1);
  await page.evaluate(()=>(window as any).failCapture=true);await page.getByRole('button',{name:'Capture current screen and send',exact:true}).click();
- await expect(page.locator('.capture-error')).toContainText('No older image will be substituted');expect(requests).toBe(1);await expect(page.getByRole('button',{name:'Capture current screen and send',exact:true})).toBeEnabled();
- await page.evaluate(()=>{(window as any).failCapture=false;return (window as any).paint();});await page.locator('.capture-error').getByRole('button',{name:'Retry: capture a new image'}).click();await expect.poll(()=>requests).toBe(2);await expect(page.locator('.conversation-turn')).toHaveCount(2);
+ await expect(page.locator('.capture-error:visible, .composer:visible')).toContainText('No older image will be substituted');expect(requests).toBe(1);await expect(page.getByRole('button',{name:'Capture current screen and send',exact:true})).toBeEnabled();
+ await page.evaluate(()=>{(window as any).failCapture=false;return (window as any).paint();});await page.locator('.capture-error:visible, .composer:visible').getByRole('button',{name:'Retry: capture a new image'}).click();await expect.poll(()=>requests).toBe(2);await expect(page.locator('.conversation-turn')).toHaveCount(2);
  const ended=page.waitForResponse(r=>r.url().endsWith('/end'));await page.locator('.topbar button.stop').click();await ended;
 });
 

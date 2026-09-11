@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MAX_APPROVED_IMAGE_BYTES, type ApprovedImage } from '@guide/contracts';
 import { useWords } from '../lib/messages';
 import { workspaceWords } from '../lib/workspace-copy';
+import {designWords} from '../lib/design-copy';
 
 export type PreparedImage = Omit<ApprovedImage, 'analysisConsent'>;
 export function ImageReview({ imageUrl, onEdit, onPrepared, compact=false }: { imageUrl: string; onEdit: () => void; onPrepared: (image: PreparedImage) => void; compact?:boolean }) {
@@ -50,7 +51,7 @@ export function ImageReview({ imageUrl, onEdit, onPrepared, compact=false }: { i
     finally { if (marker === generation.current) setBusy(false); }
   }
   return <div className="image-review" data-editing={editing}>
-    {compact && <div className="actions"><button type="button" aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)}>{w.inspect}</button><button type="button" aria-expanded={editing} onClick={()=>{setEditing(value=>!value);setExpanded(true);}}>{w.edit}</button></div>}
+    {compact && <div className="actions"><button type="button" aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)}>{w.inspect}</button><button type="button" aria-expanded={editing} onClick={()=>{setEditing(value=>!value);setExpanded(true);}}>{designWords(uiLocale).edit}</button></div>}
     <div hidden={compact&&!editing}><h3>{m('Prepare an image for AI analysis')}</h3>
     <p>{m('Crop out unrelated content and cover private areas with solid masks. Masking does not guarantee privacy. Inspect the final image yourself.')}</p>
     <p>{m('Drag to select an area, or enter percentages below. Cropping and masking happen only on this device.')}</p>

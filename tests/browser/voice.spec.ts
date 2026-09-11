@@ -33,7 +33,7 @@ test('language focus does not start audio; Hindi activation localizes and handle
 test('local speech detection honors a slower pause, submits once, keeps capture during playback, and resumes',async({page})=>{
   test.setTimeout(120000);await syntheticMicrophone(page);await login(page);
   let transcriptions=0,turns=0;page.on('request',req=>{if(req.url().endsWith('/transcriptions'))transcriptions++;if(req.url().endsWith('/turns'))turns++;});
-  await page.locator('.voice-assistant select').selectOption('5000');await page.locator('.voice-assistant button.primary').click();
+  await page.locator('.voice-settings').click();await page.locator('.voice-assistant select').selectOption('5000');await page.locator('.app-dialog[open] > header button').click();await page.locator('.voice-assistant button.primary').click();
   await expect(page.locator('[data-voice-state=listening]')).toBeVisible({timeout:55000});
   await page.waitForTimeout(2500);expect(transcriptions).toBe(0);
   const duration=await page.evaluate(()=>(window as any).injectSpeech());await page.waitForTimeout(duration*1000+2800);expect(transcriptions).toBe(0);
@@ -43,9 +43,9 @@ test('local speech detection honors a slower pause, submits once, keeps capture 
   await expect(page.locator('.answer')).toHaveCount(1,{timeout:20000});
   await expect(page.locator('[data-voice-state=listening]')).toBeVisible({timeout:15000});
   expect(turns).toBe(1);await page.waitForTimeout(5500);expect(transcriptions).toBe(1);
-  await page.locator('.voice-assistant button.secondary').click();await expect(page.locator('[data-voice-state=paused]')).toBeVisible();
-  await page.locator('#question').fill('A typed alternative');await expect(page.locator('#question')).toHaveValue('A typed alternative');
-  await page.locator('.topbar button.stop').click();expect(await page.evaluate(()=>(window as any).inputTracks.every((track:MediaStreamTrack)=>track.readyState==='ended'))).toBe(true);
+  await page.locator('.voice-assistant > .actions button.secondary').click();await expect(page.locator('[data-voice-state=paused]')).toBeVisible();
+  await page.locator('.voice-assistant button.primary').click();await expect(page.locator('[data-voice-state=listening]')).toBeVisible({timeout:35000});await page.locator('.voice-assistant > .actions button.secondary').click();await page.locator('#question').fill('A typed alternative');await expect(page.locator('#question')).toHaveValue('A typed alternative');
+  const ended=page.waitForResponse(r=>r.url().endsWith('/end'));await page.locator('.topbar button.stop').click();await ended;expect(await page.evaluate(()=>(window as any).inputTracks.every((track:MediaStreamTrack)=>track.readyState==='ended'))).toBe(true);
 });
 
 test('voice provider failure speaks one recovery and pauses without retrying forever',async({page})=>{
