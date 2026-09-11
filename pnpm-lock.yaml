@@ -35,6 +35,9 @@ importers:
       '@nestjs/platform-express':
         specifier: 11.2.3
         version: 11.2.3(@nestjs/common@11.2.3(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)
+      express:
+        specifier: 5.2.1
+        version: 5.2.1
       firebase-admin:
         specifier: 14.4.0
         version: 14.4.0(@firebase/app-compat@0.5.18)(@firebase/app@0.16.2)

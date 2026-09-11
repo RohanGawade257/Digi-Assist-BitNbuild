@@ -68,6 +68,8 @@ export class Providers {
       const output = modelResultSchema.parse(JSON.parse(candidate.content.parts.filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || '').join('')));
       const labels = turn.source?.reviewedLabels || [];
       if (output.referencedLabels.some(id => !labels.some(l => l.id === id))) throw new Error();
+      if (output.referencedLabels.some(id => !output.explanationEn.includes(labels.find(l => l.id === id)!.text))) throw new Error();
+      if (output.status === 'answer' && turn.source?.selectedTarget && !output.referencedLabels.includes(turn.source.selectedTarget.labelId)) throw new Error();
       if (containsSensitiveText(output.explanationEn) || containsSensitiveText(output.draftEn || '')) throw new Error();
       if (turn.taskKind !== 'draft-text' && output.draftEn) throw new Error();
       if (turn.taskKind === 'draft-text' && output.status === 'answer' && !output.draftEn) throw new Error();

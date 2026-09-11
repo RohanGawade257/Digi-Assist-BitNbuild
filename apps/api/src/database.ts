@@ -19,7 +19,7 @@ export class Database implements OnApplicationShutdown {
     this.client = new MongoClient(this.config.mongoUri, { serverSelectionTimeoutMS: 2500, connectTimeoutMS: 2500, maxPoolSize: 10 });
     try {
       await this.client.connect();
-      const db = this.client.db('digital_assistant');
+      const db = this.client.db(this.config.env.MONGO_DATABASE || 'digital_assistant');
       await Promise.all([
         db.collection('sessions').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
         db.collection('sessions').createIndex({ ownerUid: 1, updatedAt: -1 }),

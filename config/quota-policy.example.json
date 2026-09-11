@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "verified": false,
+  "groups": [
+    { "id": "gemini-main", "provider": "gemini", "rpm": null, "tpm": null, "rpd": null },
+    { "id": "sarvam-main", "provider": "sarvam", "rpm": null, "tpm": null, "rpd": null }
+  ]
+}
