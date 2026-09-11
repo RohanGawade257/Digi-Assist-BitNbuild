@@ -26,6 +26,7 @@ export class Database implements OnApplicationShutdown {
         db.collection('users').createIndex({ firebaseUid: 1 }, { unique: true }),
         db.collection('requestRecords').createIndex({ ownerUid: 1, requestId: 1 }, { unique: true }),
         db.collection('requestRecords').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+        db.collection('feedback').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
         db.collection('quotaWindows').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
       ]);
       return db;

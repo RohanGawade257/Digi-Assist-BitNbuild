@@ -4,13 +4,13 @@ const { createHash, randomUUID } = require('node:crypto');
 const { turnSchema, sourceSchema, approvalPayload, locales, containsSensitiveText } = require('@guide/contracts');
 const { Assistant } = require('../dist/assistant');
 const { Providers } = require('../dist/providers');
-const { Configuration, quotaSchema } = require('../dist/config');
+const { Configuration, quotaSchema, operationReady } = require('../dist/config');
 const { AuthGuard } = require('../dist/auth');
 
 function turn(overrides = {}) { return { requestId: randomUUID(), question: 'Explain how to attach a file.', inputLocale: 'en-IN', replyLocale: 'en-IN', draftLocale: null, taskKind: 'general-help', inputMode: 'text', source: null, nonSensitiveConfirmed: true, ...overrides }; }
 function source() { const s = { kind: 'screenshot', version: 1, capturedAt: new Date().toISOString(), contextMode: 'reviewed-labels', reviewedLabels: [{ id: 'label_1', text: 'Attach files' }], selectedTarget: { labelId: 'label_1', sourceVersion: 1 }, userReviewed: true }; s.sanitizedHash = createHash('sha256').update(approvalPayload(s)).digest('hex'); return s; }
 const model = { status: 'answer', explanationEn: 'Choose Attach files.', draftEn: null, referencedLabels: ['label_1'], requiresFreshContext: false, completionBasis: 'not_completed' };
-const sessionDouble = () => ({ source: async () => {}, claim: async () => {}, finish: async () => {} });
+const sessionDouble = () => ({ source: async () => {}, claim: async () => {}, finish: async () => {}, recent: async () => [] });
 
 test('all seven locales accept Unicode; draft language is explicit and independent', () => {
   for (const locale of locales) assert.ok(turnSchema.safeParse(turn({ question: 'हिन्दी বাংলা मराठी తెలుగు தமிழ் اردو', inputLocale: locale, replyLocale: locale })).success);
@@ -30,7 +30,7 @@ test('unknown quotas cannot become unlimited', () => {
   assert.equal(quotaSchema.safeParse({ schemaVersion: 2, verified: false, groups: [] }).success, false);
   const configuration = new Configuration();
   assert.ok(configuration.problems.includes('GEMINI_MODEL'));
-  assert.ok(configuration.problems.includes('QUOTA_POLICY_PATH'));
+  assert.equal(operationReady(configuration, 'gemini', 'generate'), false);
 });
 test('guard rejects absent or malformed tokens and uses verified identity', async () => {
   let checked = '';
@@ -54,6 +54,18 @@ test('Hindi explanation retains an English draft via independent pipeline stages
   assert.equal(result.explanation.locale, 'hi-IN'); assert.equal(result.draft.locale, 'en-IN'); assert.match(result.draft.text, /^Dear/);
   assert.deepEqual(stages.map(s => s.slice(0, 2)), [['hi-IN', 'en-IN'], ['en-IN', 'hi-IN'], ['en-IN', 'en-IN']]);
 });
+test('follow-up reasoning receives prior guidance without carrying old source evidence', async () => {
+  const sessions = sessionDouble();
+  sessions.recent = async () => [{ question: 'Where do I begin?', answer: { explanation: { locale: 'en-IN', text: 'Read the public instructions.' }, draft: null, referencedLabels: [{ id: 'old_label', text: 'Old screen label' }] } }];
+  let received;
+  const provider = { translate: async text => text, reason: async (_question, current, _signal, recent) => { received = { current, recent }; return { ...model, referencedLabels: [] }; } };
+  const assistant = new Assistant({ problems: [] }, sessions, provider);
+  await assistant.turn('a', 's', turn({ question: 'I have done the previous step. What next?' }));
+  assert.equal(received.current.source, null);
+  assert.deepEqual(received.recent, [{ question: 'Where do I begin?', guidance: { locale: 'en-IN', text: 'Read the public instructions.' }, draft: null }]);
+  assert.ok(!JSON.stringify(received.recent).includes('old_label'));
+});
+
 test('cancellation discards late provider result and blocks simultaneous user turns', async () => {
   let resolve; let called;
   const started = new Promise(r => { called = r; });
@@ -66,7 +78,7 @@ test('cancellation discards late provider result and blocks simultaneous user tu
   await assert.rejects(answer, e => e.code === 'TURN_CANCELED'); assert.equal(finished, false);
 });
 test('missing source and unsupported rule evidence clarify without billing Gemini', async () => {
-  const p = new Providers({}, { reserve: () => { throw new Error('must not bill'); } });
+  const p = new Providers({}, { scheduled: () => { throw new Error('must not bill'); } });
   assert.equal((await p.reason('Which button?', turn({ taskKind: 'guide-task' }), new AbortController().signal)).status, 'clarify');
   assert.equal((await p.reason('What is the deadline?', turn(), new AbortController().signal)).status, 'insufficient_context');
 });
@@ -74,7 +86,7 @@ test('real Sarvam adapter restores labels and rejects corrupted protected tokens
   const original = global.fetch; t.after(() => { global.fetch = original; });
   let captured;
   global.fetch = async (url, options) => { captured = { url, body: JSON.parse(options.body), headers: options.headers }; return new Response(JSON.stringify({ translated_text: 'चुनें __GUIDE_LABEL_0__' })); };
-  const p = new Providers({ translationModel: 'sarvam-translate:v1' }, { reserve: async () => ({ secret: 'test-only', group: 'g', id: 'slot' }) });
+  const p = new Providers({ translationModel: 'sarvam-translate:v1' }, { scheduled: async () => ({ secret: 'test-only', group: 'g', id: 'slot' }) });
   const result = await p.translate('Choose Attach files', 'en-IN', 'hi-IN', ['Attach files'], new AbortController().signal);
   assert.equal(result, 'चुनें Attach files'); assert.equal(captured.body.model, 'sarvam-translate:v1'); assert.equal(captured.headers['api-subscription-key'], 'test-only');
   global.fetch = async () => new Response(JSON.stringify({ translated_text: 'चुनें बदला गया' }));
@@ -83,7 +95,7 @@ test('real Sarvam adapter restores labels and rejects corrupted protected tokens
 test('Gemini adapter validates schema, labels, finish reason and bounded 429 without key rotation', async t => {
   const original = global.fetch; t.after(() => { global.fetch = original; });
   let reserved = 0; let limited = 0;
-  const p = new Providers({ model: 'configured-model' }, { reserve: async () => { reserved++; return { secret: 'test-only', group: 'shared', id: 'slot' }; }, limited: async () => { limited++; } });
+  const p = new Providers({ model: 'configured-model' }, { scheduled: async () => { reserved++; return { secret: 'test-only', group: 'shared', id: 'slot' }; }, limited: async () => { limited++; } });
   global.fetch = async () => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(model) }] } }] }));
   assert.equal((await p.reason('Attach a file', turn({ source: source() }), new AbortController().signal)).status, 'answer');
   await assert.rejects(p.reason('Attach a file', turn(), new AbortController().signal), e => e.code === 'PROVIDER_INVALID_RESPONSE');

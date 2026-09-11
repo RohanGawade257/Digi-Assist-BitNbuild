@@ -26,6 +26,11 @@ export class IdentityService {
       return { uid: claims.uid, emailVerified: claims.email_verified === true, authTime: claims.auth_time };
     } catch { throw new ApiError('AUTH_REQUIRED', 401); }
   }
+  async remove(uid: string) {
+    if (!this.app) throw new ApiError('SERVICE_UNAVAILABLE', 503);
+    try { await getAuth(this.app).deleteUser(uid); }
+    catch (error) { if ((error as { code?: string }).code !== 'auth/user-not-found') throw new ApiError('ACCOUNT_DELETE_RETRY', 503); }
+  }
 }
 @Injectable()
 export class AuthGuard implements CanActivate {

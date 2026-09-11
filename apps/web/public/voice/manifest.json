@@ -1,0 +1,338 @@
+{
+  "hi-IN/intro": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "cde46c44d90f9e653e890181db35be70217fd5b88e108e56f7f5bcff5a5813fd",
+    "audioSha256": "291410994654e7bab2d67c98880ea87c81ccb7d3d04ca00e462afdaf67dd5cb2",
+    "bytes": 885484
+  },
+  "hi-IN/unclear": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "c1c06f470cc9ac93c6751d923dd594f3e55ef3796c0dfc1c65db5f0fadc8151e",
+    "audioSha256": "55be173b9df9e7d7637f5b5129680d991c3c22dddf59d355f99f565251e4c859",
+    "bytes": 139308
+  },
+  "hi-IN/error": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "58c6c2b8c89a98346e9716b94a9e4d473feb5f70462d7f636e6b48d4ae00ff27",
+    "audioSha256": "8e610776c57dafdef874b8a8b3cb679b9a6b12cee4b0e13ec7615ccb702223ad",
+    "bytes": 340012
+  },
+  "hi-IN/login": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "7e04fd98bf80baf6b59f451d4494d14fad35bb51f7a1775981503568d3ae03dc",
+    "audioSha256": "a90e6e412617d1380529223a7cc34060c8d0e29787ef7c6d79e116a00618a01a",
+    "bytes": 282668
+  },
+  "hi-IN/review": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "d34f40d0c596595d280b4216540b50259333980707c8e966f0573e8768842c34",
+    "audioSha256": "546cb7e7dafd73b9ed102dc70b97470c3a4b6bc9a17f83f33d9b0eeff2ffb66e",
+    "bytes": 827436
+  },
+  "hi-IN/share": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "78f28331e18416f825ec909cd07606893706c4b8a1647c1e7736b391a983ef34",
+    "audioSha256": "b31be8e58d2784046b920a17b3d13c8e6109310ba30b21758857330d967c93a3",
+    "bytes": 655404
+  },
+  "hi-IN/question": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "e3a565a4cf53430ecf473a476f876243f36962d1795122a3b3bf91726bf26fff",
+    "audioSha256": "fcded46e6c05ab6977b33af4ab2c8b3bc1e555ef2aac3042f82ebe204e03c4c5",
+    "bytes": 77868
+  },
+  "hi-IN/screenQuestion": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "1c409b0115d96d32faabaa29311cb4a9cf12cccbbf0094851d67169968b296c7",
+    "audioSha256": "808bf4e82664200051c38cf6ed44b69bbc21bbefc5a7f7fa48cb9c4962abc3c3",
+    "bytes": 167980
+  },
+  "en-IN/intro": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "e2c8edf0bfa1b6022a17929f6a28239d5fbe9a2f85faad7a9469cbb0a926db88",
+    "audioSha256": "a89d58f35ef59023d9870a0bd1aa5621e099a8d7834b6c0515c3fb1438814e5e",
+    "bytes": 840428
+  },
+  "en-IN/unclear": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "d030b03e1405df13f05890caadb69f863b5157c3ff35c66e6531fb5dcd12e3f1",
+    "audioSha256": "029f740bfc266a26a607e3cb4b37bce49b4c7822379a5c80c692c8ef66a97851",
+    "bytes": 143404
+  },
+  "en-IN/error": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "b7644b778dc2e540d85a9bb8c16a9b11fca4a75231e65af7f69fdd529ef0b2f7",
+    "audioSha256": "e20b054d71e699ff241de63178e260f2460e5d78199076a4a8172345364bead1",
+    "bytes": 340012
+  },
+  "en-IN/login": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "b56fff762a1f1c1fdc088366d24364334b2b29796ef3b711c613e35092fdfe68",
+    "audioSha256": "731cbad1199b57220e4b2b264d141308cd4dd2e88870a3aef8aa7ed71262e661",
+    "bytes": 352300
+  },
+  "en-IN/review": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "f25abc305806770f0e27046fff687287780ad2ae2d5a7b1c6d52d294e63f6761",
+    "audioSha256": "b1e0242fdf3d10d6f98ccd71cfe19dd6cfb77b997505ea5afabe3baf87cf1275",
+    "bytes": 770092
+  },
+  "en-IN/share": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "5835b3d9b1a758c0443cb2598b596672f5845af463a7516e95a027501837b6dd",
+    "audioSha256": "ce9592c8f883f12ff51600df52736baa778276ab0d7ef4d4c3deb9a0d8d0fba2",
+    "bytes": 536620
+  },
+  "en-IN/question": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "212a03c4292520585dc25ef36a93526a9c3d894341d67a6405bee264aaa857fb",
+    "audioSha256": "99b304c75cb60083d5824b758950b264c94614863892844b89bd8f886dd8c844",
+    "bytes": 57388
+  },
+  "en-IN/screenQuestion": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "7f4c2f2508570a7dfe8ce1cbe57cf7f7cc8e3ae3fc2191cc66d57c042f7a2bdf",
+    "audioSha256": "688d041f8079abd1475f6fdf780f10a81359de7aed171c0130f9e7682e1d3edc",
+    "bytes": 143404
+  },
+  "bn-IN/intro": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "0a702e352e515fad10a0d95d9a5a05343d887ede1376d80230bd2af2c8ebd9e8",
+    "audioSha256": "748d84772376fbba9ec3b7ec70b4ce347b9fc85615141f807a898b15a236c825",
+    "bytes": 749612
+  },
+  "bn-IN/unclear": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "e8d9453874a3ba10a51120c347c2b14a87cc175acef8cb381b86098b6331f77c",
+    "audioSha256": "032e2063f27459574359b52cfbff67578ab936e4f1f401449784d45c1e2de741",
+    "bytes": 151596
+  },
+  "bn-IN/error": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "2ecda9f40727165c2630fb741bd4aef10e13a1ee41b372c91e68eeb210694a3e",
+    "audioSha256": "6eb1def8dfaca58b9b6829f8eb5f8996fdc46591f3df6696a901073380461519",
+    "bytes": 364588
+  },
+  "bn-IN/login": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "5b59a3fc164609670cefddf14150298662459d9574043e438c4adfde96ead0e4",
+    "audioSha256": "fa1b55863cabcfd6a9eaca72e086a6abd1db78402800bf1e0716e95f1dd4a9ff",
+    "bytes": 311340
+  },
+  "bn-IN/review": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "35fb6aaeadf9058661d696e6087a5dd276fcb48509ffedbad80df4e468481dea",
+    "audioSha256": "22b9a5dd8e6434a288326303d089948c910ea9e1899b6e4f7162a081e7240d4b",
+    "bytes": 852012
+  },
+  "bn-IN/share": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "4f0ab5779f759ce738534c67069cad2613b8d9e277bafa2cf9b478790aa671db",
+    "audioSha256": "0c992ccf5f58595f51dd66e67bc88ea65554d200ebe2b58ddc12f3badaebef45",
+    "bytes": 589868
+  },
+  "bn-IN/question": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "c59769927061791545c0d05b7750d6e6de4d5e6069fdb5572b8bf13cf1f8150a",
+    "audioSha256": "c0e0f814c34a73f4cc7d6c31781a4cfad52812b945b0336d2be14112020bce46",
+    "bytes": 69676
+  },
+  "bn-IN/screenQuestion": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "3ef86ea03906ea39305c661a2e8c0fd50e36a038d7a031d70d06bab182ffccbd",
+    "audioSha256": "e5440ad22c1c7289b2f9c1370cb66bf8a860a2349ba4af9f5db4ee54a7180670",
+    "bytes": 196652
+  },
+  "mr-IN/intro": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "a205720dadc5dc43a6bb1dbf3d945ae59e919d72b8fdb35997f652759bbffa3e",
+    "audioSha256": "bf3b5973bf70007898d6653043cf1df470cf3b945667161e63e2b32b86e00727",
+    "bytes": 757804
+  },
+  "mr-IN/unclear": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "76a5f01be80f6f42a772e9debd65ac4b04c1b8aa5e713ab6960c3aac74e05f0f",
+    "audioSha256": "688aae2267c18e5e63cb53335b02f256ce748289ace69a54a483c63643c975b8",
+    "bytes": 131116
+  },
+  "mr-IN/error": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "c1856c219e3c27c2929a35417d363e041afc14b9baa4de1b6ab70ff8cf051cb5",
+    "audioSha256": "cc90ab62aa35539741d8dcc7cd980565c7f1fa63b25f49b5722e1676a96c6782",
+    "bytes": 294956
+  },
+  "mr-IN/login": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "52a37b7269943ca16bb7553c98b2527a3497e77520cd3ed78e5d159d422e7cd7",
+    "audioSha256": "04dbcbb5792971cbe6d99b45538c0901878d1befa5f52f549def5021679b0591",
+    "bytes": 217132
+  },
+  "mr-IN/review": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "6193e847522be238727f0338e7f79d1394697efb6296e10de6c1043446031c14",
+    "audioSha256": "e6c138cf368c6a23ec73aa660b2a37835dc08a073c7235654e4962ac62a7c787",
+    "bytes": 770092
+  },
+  "mr-IN/share": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "60ca53ca66ff11a0be9eacaacdd5fb2b166a3509d35c7a1f3d9f9dad81844300",
+    "audioSha256": "3ee6f2caac92bb7b7406725c04ce5dbc6f357cca9f124b447e50c71040e2dd6e",
+    "bytes": 630828
+  },
+  "mr-IN/question": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "9ac8171cff50684a24e2bdf950f695f4cf616a20f21f5db76de81b87c61e6b95",
+    "audioSha256": "6fa4019ccc848094c28ef2f247c39ca1ee74d1bf76d6ad241e4cb2831d32475f",
+    "bytes": 81964
+  },
+  "mr-IN/screenQuestion": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "dde210e20970cad7a8b26c7277c5691d52e2d8ab4e8e99edf8c36ccc99914695",
+    "audioSha256": "f320a79bf23c5e8677a53e46845b2e45061945ed7667476c8e73ed1fa824bf11",
+    "bytes": 131116
+  },
+  "te-IN/intro": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "61e6c93b6ee93275b29b53a38628fe77ad6fef7fb93df20a54f78632ad14af45",
+    "audioSha256": "fe42c7025758bc6766cdab64745a7588c3254ac800121fb51acf7b286a9330aa",
+    "bytes": 819244
+  },
+  "te-IN/unclear": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "17e6a350790f8a498ec6ff7039981a6e676525d2f03e103ded928459fc246539",
+    "audioSha256": "254216ff7c81b2ca681588a0585ef2e7ee368013ee0f6299efb2d14d44999dbd",
+    "bytes": 192556
+  },
+  "te-IN/error": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "b5ccdccc9c60f4ff5ebdd7f9ab47d2c34ba662872b30ddf2292a83c0e08ef52e",
+    "audioSha256": "bc18bee7c65eeba7b3fb71cd1c7ac56b71053146e68ceda69d8f294fd1a38537",
+    "bytes": 397356
+  },
+  "te-IN/login": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "99c2a3869a4abbab362e2f85038017a7feb0a1b3c0a3efd14cbd828b8f264d49",
+    "audioSha256": "69a3c506838f65446da73b1ed625dd5b60f6df7c49abb2ebf029196941ca59e3",
+    "bytes": 376876
+  },
+  "te-IN/review": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "716a2c96d87024d48ab9f0ff2ae0ca78c15cbff70d5b0856f9e81cbfac9e8225",
+    "audioSha256": "7c4940e7f7555eb308f073fe052c832ace4f0af4f1236f3ed1a95c9981c2c3fb",
+    "bytes": 868396
+  },
+  "te-IN/share": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "f53215166fb5da565f1b5c5eadd9fc4344892af47e06c75239054c06af606170",
+    "audioSha256": "b45920a479778998b615a6320cc21935e5c79001f400a24c0149b10eafd77464",
+    "bytes": 667692
+  },
+  "te-IN/question": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "6225d8d6ca2f1d6e81fae9ee99f1a6de92097ea49cdb2c47c2bce93ac58f8cc8",
+    "audioSha256": "19deae4cc0349729e2e1dacaae1f4dd50b69e2c57f75c512a059374a5644d10e",
+    "bytes": 86060
+  },
+  "te-IN/screenQuestion": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "2d1761df99cd848619e9ac280b0bccb7b9f9a9b85d5035f477dee8cd02b46fa3",
+    "audioSha256": "89b96de37514287e952446f5e4faca7993706d021f8a9e1b102ea3a0be66a5eb",
+    "bytes": 192556
+  },
+  "ta-IN/intro": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "4fc182e964607014ed0dd4113815d48cbe3fea1c5765db8956f9007fa57c9e69",
+    "audioSha256": "faa35542ee5313033ad355a43c6376b91eff413fee200b0bab276dd2efd4562c",
+    "bytes": 909356
+  },
+  "ta-IN/unclear": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "e9643c846a33ae579ed26389917edd387f5d5bd35020af4abb6ee6f32adbfdc0",
+    "audioSha256": "e36e7eeb26c01fabcf2d2f23b24168be5b05e2da44609a66c99c919ab762004e",
+    "bytes": 127020
+  },
+  "ta-IN/error": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "4efe703c3fb3cc163f3cb15eccf3fdd067fa624fcc1ebda294e0c09ffc3c7e3e",
+    "audioSha256": "4030d23059b709d189f6eaa185f16b66405377081c81e248c05da0c7ebd2d68c",
+    "bytes": 397356
+  },
+  "ta-IN/login": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "aaaa30ce654cbebe87fb14060a669a72cd49a50b1bc37732fbb2d806b78b3082",
+    "audioSha256": "73acd6872b4231cb87bbb230e42c246a242864ea56a296a8c7a055d2955df26b",
+    "bytes": 372780
+  },
+  "ta-IN/review": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "7de0552e8d69f94422373da754509d62dc0ba49f34fb720761f5816fca3b24a2",
+    "audioSha256": "30da11d7b8cf3ea3a4c873e4eea48efdfe5053a8a35d63aec7020476e4e48633",
+    "bytes": 757804
+  },
+  "ta-IN/share": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "46fb4ecad3e896abe529b67bd2f8fbbe4edeedcb1bb2373b90c0d5cb687312c8",
+    "audioSha256": "cd70b334bac29d54c345256114df36c6725e2f27004cb8fe5edf88a491cdf495",
+    "bytes": 725036
+  },
+  "ta-IN/question": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "233b85783396bb99a1aefffc7aeb9967803a8c91eb668d6b53c529990f6fae91",
+    "audioSha256": "cfdb8ec76201f28cf25c99b8ec3ccf5d7586d469e925a5acc494ddcd53bef3a4",
+    "bytes": 86060
+  },
+  "ta-IN/screenQuestion": {
+    "model": "bulbul:v3",
+    "speaker": "shubh",
+    "textSha256": "74d1c0fe8b6ab1c75717e3734baaade5a189baba8a045c6b447e2694a885025b",
+    "audioSha256": "207698c90a1b7c6c8a101ac79f341e89432c2384fe06368a2c9f1a1ea2b1925d",
+    "bytes": 196652
+  }
+}

@@ -1,8 +1,78 @@
 {
-  "schemaVersion": 2,
-  "verified": false,
+  "schemaVersion": 3,
   "groups": [
-    { "id": "gemini-main", "provider": "gemini", "rpm": null, "tpm": null, "rpd": null },
-    { "id": "sarvam-main", "provider": "sarvam", "rpm": null, "tpm": null, "rpd": null }
+    {
+      "id": "gemini-main",
+      "provider": "gemini",
+      "apis": [
+        {
+          "operation": "generate",
+          "model": "REPLACE_WITH_CONFIGURED_MODEL",
+          "verified": false,
+          "limits": {
+            "rpm": {
+              "status": "unverified"
+            },
+            "tpm": {
+              "status": "unverified"
+            },
+            "rpd": {
+              "status": "unverified"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sarvam-main",
+      "provider": "sarvam",
+      "apis": [
+        {
+          "operation": "translate",
+          "verified": false,
+          "limits": {
+            "rpm": {
+              "status": "unverified"
+            },
+            "tpm": {
+              "status": "unverified"
+            },
+            "rpd": {
+              "status": "unverified"
+            }
+          }
+        },
+        {
+          "operation": "transcribe",
+          "verified": false,
+          "limits": {
+            "rpm": {
+              "status": "unverified"
+            },
+            "tpm": {
+              "status": "unverified"
+            },
+            "rpd": {
+              "status": "unverified"
+            }
+          }
+        },
+        {
+          "operation": "speak",
+          "verified": false,
+          "limits": {
+            "rpm": {
+              "status": "unverified"
+            },
+            "tpm": {
+              "status": "unverified"
+            },
+            "rpd": {
+              "status": "unverified"
+            }
+          }
+        }
+      ]
+    }
   ]
 }

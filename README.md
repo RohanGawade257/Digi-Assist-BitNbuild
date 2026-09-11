@@ -1,28 +1,41 @@
 # Digital Assistant
 
-An accessible multilingual website for unfamiliar websites, forms, registrations and email. Primary audiences are older adults, people facing language or digital-literacy barriers, and people with disabilities. It explains and drafts; users perform external actions themselves.
+An accessible multilingual guide to unfamiliar websites, forms, registration and email drafting. It helps older adults, people facing language or digital-literacy barriers, and people with disabilities. The user performs all external actions.
 
-**First implementation slice, 11 September 2026.** Builds and local tests pass. The user supplied Firebase/Gemini/Sarvam environment configuration. An explicitly approved Gemini metadata probe returned HTTP 200 and confirmed generation-method support; no content was generated. Live authenticated journeys remain blocked by the missing Firebase Admin JSON and unverified quota policy. This is not the completed seven-language release. See [progress](progress.md), [handoff](context.md), [decisions](docs/decisions.md), [API](docs/api.md) and [validation](docs/validation.md).
+The voice journey connects language activation, spoken onboarding, local speech detection, automatic Sarvam/Gemini turns, captions, answer audio and listening resumption. Approved-image follow-ups run only after exact image consent. Real synthetic browser/provider journeys passed in Hindi, English, Bengali, Marathi and Telugu. Tamil's provider chain runs, but its latest accuracy check failed; Urdu speech output remains unavailable. Physical microphones, native-app focus and human language quality still need verification. See [progress](progress.md), [handoff](context.md), [validation](docs/validation.md), [API](docs/api.md), and [OpenAPI](docs/openapi.json). Fixtures alone are **not** live-provider evidence.
 
-## Implemented
+## What is implemented
 
-- Next.js language selection before login; English, Hindi, Bengali, Marathi, Telugu, Tamil and Urdu core catalogs, Urdu RTL, independent assistance/interface/input/draft languages.
-- Firebase email/password signup, login, verification/reset and in-memory browser auth. Firebase Admin verifies tokens and revocation. No second password database or production auth bypass.
-- NestJS health/readiness, strict shared contracts, MongoDB owner-scoped preferences and expiring sessions. Provider operations require verified email.
-- Real typed Gemini/Sarvam adapters: English processing, structured answers, separately localized explanation/draft, protected-label validation. No fake-answer fallback.
-- Local screenshot preview and editable public-label checklist. Selection and approval are separate, with canonical SHA-256 approval and source-version checks. API accepts reviewed labels only, never raw image/OCR/audio.
-- Persistent request deduplication, one active turn per user in one API process, bounded deadlines, cancellation/deletion checks, shared atomic Mongo quota budgets and group cooldowns.
-- Unicode multiline chat, visible send/stop controls, Escape/focus return, draft preservation and optional in-page shortcut. History is forced off.
+- Activating a language selects the interface/input/reply locale, plays its pregenerated Sarvam introduction, requests microphone permission and then listens. Focus alone does not activate voice. Start voice assistant is the retry action; Continue keeps typing available.
+- Enter and Send use the same guarded submission path; Shift+Enter inserts a newline, IME confirms composition, and failures keep the draft with Retry. Contextual Help appears once per step, stays dismissible, and never steals focus.
+- Language selection before login; English, Hindi, Bengali, Marathi, Telugu, Tamil and Urdu interface/text paths, including Urdu RTL. Input, interface, assistance and draft languages remain independent.
+- Firebase email/password login, signup, verification/reset and memory-only browser authentication. Firebase Admin validates identity/revocation; Mongo queries enforce ownership.
+- Gemini structured guidance with Sarvam translation through English; Hindi assistance can accompany an English email draft. Exact reviewed labels are protected during translation.
+- Local screenshot preview and desktop capture with two explicit modes: approved-image analysis, or manually reviewed labels only. Crop and solid masking run locally; numeric area fields provide a keyboard alternative to dragging. The exact final preview is hashed and approved separately. Shared-view changes revoke approval; sending performs another local freshness check.
+- Voice mode uses self-hosted Silero VAD locally: 800 ms leading audio, minimum 450 ms speech, a default 2-second silence interval adjustable to 3.5 or 5 seconds, and a 25-second cap. It submits once after speech, stops microphone tracks during processing/playback, speaks the owned answer and resumes listening. No barge-in or continuous cloud streaming is claimed. Manual recording with editable transcript review remains available.
+- Voice activation discloses automatic Sarvam transcription and Gemini questions. Exact image approval stays separate. Answer playback has captions, repeat, slower, pause and End controls; typing pauses active voice. Urdu retains the explicit speech-output limitation.
+- Keyboard/touch chat, pin, Escape/focus return, Unicode/IME guard and supported Document Picture-in-Picture with preserved drafts. Other browsers use the in-page panel beside the external website.
+- Saved preferences; history off by default. Optional saved sessions retain their latest 50 turns for 30 days. End preserves opted-in history; Delete erases it. Optional feedback starts with no rating selected, works after End assistance, requires consent and expires after 90 days. Account deletion requires recent authentication and removes Firebase identity and owned application data.
+- Bounded provider streams/deadlines, cancellation, persistent turn/transcription deduplication, shared atomic Mongo quotas, bounded queue/retries and same-account credential replacement.
 
-## Structure
+**Accepted limitation:** Sarvam Bulbul v3 does not list Urdu speech output. Urdu text remains supported; Urdu audio is disabled before billing. Tamil also needs an accuracy repair or native validation: Sarvam misrecognized the short synthetic question even without VAD cutting it. [Sarvam's supported TTS languages](https://docs.sarvam.ai/api/api-guides-tutorials/text-to-speech/how-to/set-the-language).
 
-`apps/web`: Next.js UI and Firebase client. `apps/api`: NestJS, Firebase Admin, MongoDB and providers. `packages/contracts`: shared Zod contracts. `config`: quota template. `docker/Dockerfile` and `compose.yaml`: local containers. `scripts/setup-local.ps1`: repeatable environment setup. `tests/browser`: Playwright/axe. `Digital_Assistant_Architecture`: unchanged revision 3 snapshot.
+No external clicking, submission, payments or email sending occurs. Official-rule questions receive an explicit evidence limitation. No raw screenshot, unreviewed OCR or recording is persisted.
 
-No Git repository existed; no commits were made. `pnpm-lock.yaml` is present. `.gitignore` excludes credentials, `.env`, local quota policy, build artifacts and test traces if Git is initialized later.
+## Repository
 
-## Docker startup (PowerShell)
+- `apps/web`: Next.js UI, Firebase client, capture/recording and localized controls.
+- `apps/api`: NestJS, Firebase Admin, Mongo, sessions, quotas and provider adapters.
+- `packages/contracts`: strict shared schemas, label protection and media validation.
+- `config`, `docker`, `compose.yaml`: local deployment and quota template.
+- `tests/browser`, `apps/api/test`: Playwright/axe, core and Mongo integration tests.
+- `scripts/export-openapi.cjs`, `scripts/localize-ui.cjs`: contract/copy consistency checks.
 
-Prerequisite: Docker Desktop running Linux containers and Compose. Setup preserves existing files and generates only a random local Mongo password, not cloud credentials.
+Git branch is `main`; user work is preserved. Credentials, root `.env`, local quota policy, build outputs and test traces are ignored. Dependencies and container bases are pinned; the lockfile is reproducible.
+
+## Start with Docker (PowerShell)
+
+Docker Desktop must be running Linux containers. Setup preserves existing configuration and generates only local Mongo credentials.
 
 ```powershell
 powershell -NoProfile -File scripts/setup-local.ps1
@@ -31,37 +44,59 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Website: **http://localhost:3000**. API liveness: **http://localhost:3001/api/v1/health**. Readiness: **http://localhost:3001/api/v1/ready**. MongoDB: **127.0.0.1:27018**, preserving an existing service on 27017. `MONGO_PORT` overrides the host port; update the host `MONGODB_URI` too. Containers use `mongo:27017` automatically.
+Website: **http://localhost:3000**. API health: **http://localhost:3001/api/v1/health**. Readiness: **http://localhost:3001/api/v1/ready**. Project MongoDB: **127.0.0.1:27018**; an unrelated service on 27017 is preserved.
 
-Without cloud configuration, the UI and Mongo run, API liveness passes, and readiness returns **503**. Docker marks the API unhealthy deliberately. The web depends on API startup so onboarding remains inspectable. Do not print plain `docker compose config` into shared logs; it resolves secrets.
+Readiness requires Mongo, identity and the Gemini operation policy. Sarvam translation, transcription and speech output expose independent readiness flags and stay gated if their own policies are pending; they do not block English Gemini-only questions. Use `docker compose down` to stop while retaining data; adding `-v` deletes the database volume. Do not print full `docker compose config` to shared logs because it expands secrets.
 
-Use `docker compose down` to stop without deleting data. Do not add `-v` unless you intend to delete the database. Changing initialization credentials does not change an existing volume's password.
+## Configuration
 
-## Live configuration
+Edit the ignored root `.env` and `config/quota-policy.json` locally. Server keys must never use a `NEXT_PUBLIC_` name.
 
-Edit the ignored root `.env` and `config/quota-policy.json` locally. Never put server keys in `NEXT_PUBLIC_*` variables.
+1. Enable Firebase Email/Password and authorize localhost. Set the four public Firebase fields in `.env.example`. Verification/reset emails are initiated only through the account UI.
+2. Put the matching Admin JSON at `secrets/firebase-admin.json` and set `FIREBASE_PROJECT_ID`. Compose mounts it read-only. Host paths resolve from `apps/api`.
+3. Set a supported `GEMINI_MODEL` and `GEMINI_API_KEY_1`. Slots 2–4 are optional.
+4. Set `SARVAM_API_KEY_1`; slots 2–3 are optional. Implemented models are `sarvam-translate:v1`, `saaras:v3` and `bulbul:v3` (speaker `shubh`). STT/TTS choices are fixed to the validated adapter contracts.
+5. Use quota schema v3 from `config/quota-policy.example.json`: each account group has separate API operations and per-metric statuses. `verified` requires a positive value and evidence; `unpublished` requires evidence and has no invented value; `unverified` keeps that API gated. A verified RPM cap is required. Mark each operation verified only after establishing its applicable policy. Keys on one account share that operation budget; secondary identities never evade a cap. Legacy v2 remains readable.
+6. Cloud microphone upload defaults off: `STRICT_PRIVACY_MODE=true`. This local instance now uses `false` with the user's explicit approval. In-app voice activation consent or manual recording-upload consent remains mandatory; image approval is separate.
+7. Rebuild/restart with `docker compose up --build -d`. Public Firebase configuration is embedded in the web build.
 
-1. Enable Firebase Email/Password, authorize localhost, and configure verification/reset email templates. Set `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`.
-2. Save matching service-account JSON at `secrets/firebase-admin.json`; set `FIREBASE_PROJECT_ID`. Compose mounts it read-only at `/run/secrets/firebase-admin.json`. The host example path resolves from `apps/api`.
-3. Set `GEMINI_MODEL` to an image-capable model actually available in the account and at least `GEMINI_API_KEY_1`. Four slots exist; empty secondary slots are valid. This endpoint sends labels only.
-4. Set at least `SARVAM_API_KEY_1`; three slots exist. Translation defaults to `sarvam-translate:v1`. STT/TTS variables reserve agreed names but speech is not implemented yet.
-5. Enter verified finite positive integer RPM/TPM/daily group caps in **quota schema v2**. Mark verified only after checking actual limits. Caps must not exceed the strictest applicable shared account/model allowance. Null/unknown limits fail readiness. Keys sharing a project/account must share a group. See decisions.
-6. Run `docker compose up --build -d`. Rebuild web after public Firebase configuration changes because Next.js embeds those values at build time.
+Current setup: Firebase Admin and provider credentials validate. The user confirmed Gemini 3.5 Flash Lite at 15 RPM, 250000 TPM and 500 RPD. Sarvam free tier is treated as Starter: translation 60 RPM, REST transcription 60 RPM and Bulbul v3 30 RPM. Its REST TPM/RPD values are unpublished, not guessed or claimed unlimited. Policies and cooldowns are per API; each account's keys share them. These values are recorded only in the ignored local policy, not pre-verified in the template. [Sarvam rate-limit table](https://docs.sarvam.ai/api/getting-started/ratelimits).
 
-Use synthetic, non-sensitive examples. Regex detection cannot identify every name or personal value. Approval does not make private material suitable for provider upload. Gemini model metadata access is verified, but content generation, Sarvam translation and Firebase identity flows are not.
+```powershell
+pnpm --filter @guide/api probe:local
+```
 
-## Host development and verification
+This command reports configuration validity without network requests or secrets. `probe:config` additionally authenticates to Google's official model-metadata endpoint; it does not generate content. Those metadata/configuration probes and real password login/protected API access have passed. Signup verification-email delivery remains unverified. See `docs/validation.md` for generation results; metadata alone is not generation evidence.
 
-Tested host: Node **22.20.0**, pnpm **10.30.3**, Windows PowerShell. Containers use Node **24.13.0** and MongoDB **8.0.20**, pinned by digest. Packages include Next.js **16.3.4**, React **19.3.0**, NestJS **11.2.3**, Express **5.2.1**, Firebase **12.19.0**, Firebase Admin **14.4.0**, MongoDB driver **7.6.0**, TypeScript **5.9.3**. Transitive versions are locked.
+### Login / registration troubleshooting
+
+The earlier Firebase setup failure is resolved. Latest remote checks return HTTP200, Email/Password is enabled, and localhost is authorized. All four public Firebase fields match the running web bundle; server/web/Admin projects agree. Real browser password sign-in and the protected preferences API passed using a temporary synthetic account, which was then removed with its owned data. No verification or reset email was sent.
+
+Use **http://localhost:3000**. The current Firebase authorized-domain list includes localhost, but not 127.0.0.1. If failures recur, check Authentication -> Sign-in method -> Email/Password in the project named by NEXT_PUBLIC_FIREBASE_PROJECT_ID, then compare that project's web app configuration with the four public fields in .env. Rebuild web after public environment changes. [Firebase password-auth setup](https://firebase.google.com/docs/auth/web/password-auth).
+
+```powershell
+node scripts/probe-firebase.cjs
+node scripts/probe-firebase.cjs --remote
+```
+
+The first command compares local configuration and the running bundle and checks configured server secrets are absent from served HTML/JavaScript. The remote option also reads Google's public/Admin Auth configuration. Both print safe flags only; neither creates users, sends mail or changes settings.
+
+Localized errors appear beside account controls. Signup validates the form before requesting Firebase; if account creation succeeds but email delivery fails, a resend path remains. Extension contentscript.js warnings and this app's deliberately disabled camera permission are separate from Firebase HTTP400 responses.
+
+An opt-in developer check, `node scripts/check-live-auth.cjs --run`, creates a unique preverified synthetic account, signs in through the real browser/Firebase path and exercises the real API. It cleans up only that test identity and its owned data; a UID-only deletion tombstone may remain. It sends no email and does not verify normal signup/email delivery. Do not use it for real user accounts.
+
+## Host development and checks
+
+Tested host: Node22.20.0, pnpm10.30.3. Containers: Node24.13.0 and Mongo8.0.20, pinned by digest. Baseline majors: Next16, React19, Nest11, Firebase12, Admin14, Mongo driver7, TypeScript5.9.
 
 ```powershell
 pnpm install --frozen-lockfile
-powershell -NoProfile -File scripts/setup-local.ps1
 docker compose up -d mongo
+docker compose stop api web
 pnpm dev
 ```
 
-Use `docker compose stop api web` before host development if Docker occupies ports 3000/3001. API dev compiles on startup; restart after API changes. Next.js hot-reloads the UI.
+The web loads root public environment values; API development compiles on startup and needs a restart after API changes. Docker and host development cannot both occupy ports3000/3001.
 
 ```powershell
 pnpm typecheck
@@ -70,20 +105,24 @@ pnpm test:integration
 pnpm build
 pnpm exec playwright install chromium
 pnpm test:browser
+pnpm check:docs
+pnpm audit --prod
 ```
 
-`pnpm --filter @guide/api probe:local` checks local configuration without network requests. `pnpm --filter @guide/api probe:config` additionally sends the Gemini key only to Google's official API for model metadata; it does not generate content or print secrets. The user explicitly approved and ran that metadata probe in this session.
+Browser tests need local Mongo and either the running Docker web or a host production build. They start an isolated fixture API on4101; Firebase REST responses and AI are explicit test doubles. No production auth bypass or fake-answer mode exists. Tests create unique `guide_test_*` databases and delete only their own database. Playwright teardown also performs cleanup on Windows. Use `pnpm docs:api` after shared schema changes.
 
-Observed: 11 core tests passed; real Mongo/Nest integration passed seven nested scenarios (eight Node entries with parent); final Docker-hosted browser run passed all six journeys. Firebase/AI doubles are injected only in tests. Integration creates and deletes only a unique `guide_test_*` database. Axe found zero violations in checked onboarding and 375px enlarged-text states. Frozen install, full type checks, host production builds and Docker builds passed. Desktop/mobile screenshots were visually inspected. Details are in validation.md.
+Latest results (2026-09-11): **20 core tests, ten real-Mongo scenarios plus parent, and 30 browser tests pass**. The browser suite covers all four text/voice and screenshot/shared-view combinations. Production dependency audit: **zero known vulnerabilities**. TypeScript, production builds, API/copy consistency checks and container smoke checks pass. `docs/validation.md` records the evidence and test isolation. Automated axe checks do not establish screen-reader or native-language quality.
 
-Some pnpm dependency reads and Docker calls failed inside the Codex Windows sandbox. The same commands passed outside it; application checks were not weakened.
+Run `node scripts/check-live-image.cjs --run` for an opt-in real synthetic screenshot/Gemini/Sarvam check with exact temporary-account cleanup. Run it after browser tests, because Playwright replaces test-results. This sends only its generated synthetic image and question, never user media or emails.
 
-## Known limits and next slices
+For reproducible visual captures, run `node scripts/inspect-ui.cjs` against the running website. It saves desktop, enlarged mobile and Urdu mobile images under ignored `test-results/inspection/`, and reports mobile overflow without using an account or provider.
 
-Live identity/provider access, full seven-language journeys and native listening remain unverified. Secondary review/help text is partly English. No speech/playback, desktop capture, automatic OCR, safe crop upload, coordinate selection or Picture-in-Picture yet. Pin keeps empty chat open when focus leaves; drafts and answers also prevent automatic collapse.
+## Privacy, recovery and limits
 
-Saved history, feedback and account deletion are not implemented. Unsaved content remains in browser memory until clear/logout/reload/page close. Session metadata expires after 15 minutes without a successful turn; idle warnings are pending. Duplicate requests return used/conflict errors rather than reconstructing unsaved content. Cancel cannot guarantee an upstream request is unbilled.
+Default-off content lives in browser memory and a bounded six-turn server cache with 15-minute idle expiry. Idle warnings preserve typed drafts. Account-deletion tombstones contain only the Firebase UID and deletion flag to block late writes. Saved content and feedback are owner-filtered and expiry-checked before Mongo TTL cleanup.
 
-Official-rule questions receive a limitation; no official-reference registry or web lookup exists. Structured checks and prompts are defenses, not proof of perfect grounding. No external actions occur.
+Screenshots support PNG/JPEG/WebP under5MiB/12MP, with header checks before decoding. Desktop frames are sampled locally; dynamic pages may require frequent review. The browser normalizes approved images to metadata-free PNG (at most 1600 pixels per side); the API permits at most 2 MiB, 2048 pixels per side and 4 MP, checks full PNG structure/raster/hash, and authenticates before parsing the 3 MiB turn envelope. The preview is exactly the bytes sent through Gemini inlineData. Image and source-version changes require fresh approval. Images are not saved in app history or logs. Masking does not guarantee privacy: inspect the final image yourself. If visual review is difficult, select labels only or remove the source and type a public instruction. No automatic uploads or continuous cloud streaming occur; analysis runs only on questions. Every image is a snapshot, never a live view.
 
-Quota handling uses conservative immediate rejection rather than queue/retry/failover; one API replica only. Containers retain build tooling for local verification. Production needs minimal runtime images, HTTPS/origins, restricted database credentials, retention/backups, broader adversarial checks, native-language and screen-reader tests, and representative user evaluation. No public deployment or spending occurred.
+Canceling discards late results but cannot guarantee an upstream request was unbilled. A reused turn/transcription ID fails safely. Queue wait is bounded to15 seconds. Translation/generation calls allow45 seconds within a90-second turn; speech calls allow20 seconds within a30-second operation. Upstream timeouts use504 rather than408 to prevent automatic POST replay. Deployment supports one API replica because cancellation/context are process-local.
+
+Human screen-reader testing, native listening, physical capture/microphone devices, signup/email delivery, remaining live translation/STT combinations, and representative-user evaluation remain open. There is no public deployment. Production hardening such as minimal runtime images, HTTPS, restricted Mongo credentials and backup policy must be completed before public hosting.

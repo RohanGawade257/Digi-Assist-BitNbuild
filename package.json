@@ -7,7 +7,10 @@
     "typecheck": "pnpm --filter @guide/contracts build && pnpm -r typecheck",
     "test": "pnpm --filter @guide/contracts build && pnpm --filter @guide/api test",
     "test:browser": "playwright test",
+    "docs:api": "pnpm --filter @guide/contracts build && node scripts/export-openapi.cjs",
+    "check:docs": "node scripts/localize-ui.cjs && node scripts/export-openapi.cjs --check",
     "test:integration": "pnpm --filter @guide/contracts build && pnpm --filter @guide/api test:integration"
   },
-  "devDependencies": { "typescript": "5.9.3", "@types/node": "22.19.15", "@playwright/test": "1.58.2", "@axe-core/playwright": "4.11.1" }
+  "devDependencies": { "typescript": "5.9.3", "@types/node": "22.19.15", "@playwright/test": "1.58.2", "@axe-core/playwright": "4.11.1" },
+  "pnpm": { "overrides": { "@nestjs/platform-express>multer": "2.3.0", "gaxios>uuid": "11.1.1" } }
 }

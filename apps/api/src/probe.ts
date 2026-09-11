@@ -1,4 +1,4 @@
-import { Configuration } from './config';
+import { Configuration, operationReady } from './config';
 import { IdentityService } from './auth';
 
 // Metadata/local parsing only: never generates content, sends mail or prints secrets.
@@ -6,7 +6,7 @@ async function main() {
   const config = new Configuration();
   const identity = new IdentityService(config);
   const report: Record<string, unknown> = {
-    configurationProblems: config.problems,
+    configurationProblems: config.problems, pendingPolicies: config.pendingPolicies, operations: { gemini: operationReady(config, 'gemini', 'generate'), translation: operationReady(config, 'sarvam', 'translate'), transcription: operationReady(config, 'sarvam', 'transcribe'), speechOutput: operationReady(config, 'sarvam', 'speak') },
     firebaseCredentialFileValid: identity.configured,
     sarvamCredentialPresent: config.slots.sarvam.length > 0,
     sarvamLiveVerified: false,

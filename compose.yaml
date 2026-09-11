@@ -46,6 +46,7 @@ services:
       SARVAM_QUOTA_GROUP_2: ${SARVAM_QUOTA_GROUP_2:-sarvam-main}
       SARVAM_QUOTA_GROUP_3: ${SARVAM_QUOTA_GROUP_3:-sarvam-main}
       SARVAM_TRANSLATION_MODEL: ${SARVAM_TRANSLATION_MODEL:-sarvam-translate:v1}
+      STRICT_PRIVACY_MODE: ${STRICT_PRIVACY_MODE:-true}
       QUOTA_POLICY_PATH: /app/config/quota-policy.json
     volumes:
       - ./secrets:/run/secrets:ro

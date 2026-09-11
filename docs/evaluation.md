@@ -10,6 +10,6 @@ Use consenting participants where available, ideally 3–5 covering older age, l
 
 Record participant code (not name), task, independent/assisted/incomplete, elapsed time, errors, clarification count, help needed and optional ease/confidence feedback. Do not calculate population-wide impact from a small demo.
 
-Technical matrix: NVDA + desktop Chromium, TalkBack + Android screenshot journey, VoiceOver where available; keyboard-only, touch, 200% text enlargement, 375px reflow, reduced motion; all seven languages with mixed English labels. Speech/capture paths must first exist and pass technical checks. Native listening needs real account audio, not mocked evidence. Record each unavailable combination explicitly.
+Technical matrix: NVDA + desktop Chromium, TalkBack + Android screenshot journey, VoiceOver where available; keyboard-only, touch, 200% text enlargement, 375px reflow, reduced motion; all seven text languages with mixed English labels. Speech/capture implementations now pass automated fixture checks. Native listening still needs real account audio, not mocked evidence. Evaluate the six supported output languages; the user accepted an explicit Urdu-audio limitation, so record Urdu speech as unavailable rather than passed. Urdu text still requires review. Record each unavailable combination explicitly.
 
 Current result: no representative participants, manual screen-reader sessions or native-language listening performed. Chromium/axe results are in validation.md.

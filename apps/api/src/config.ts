@@ -5,14 +5,31 @@ import { z } from 'zod';
 
 const groupSchema = z.object({ id: z.string().min(1), provider: z.enum(['gemini', 'sarvam']), rpm: z.number().int().positive(), tpm: z.number().int().positive(), rpd: z.number().int().positive() }).strict();
 export const quotaSchema = z.object({ schemaVersion: z.literal(2), verified: z.literal(true), groups: z.array(groupSchema).min(2) }).strict();
-export type QuotaGroup = z.infer<typeof groupSchema>;
-export type Slot = { secret: string; group: string; id: string };
+export type Operation = 'generate' | 'translate' | 'transcribe' | 'speak';
+const limitSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('verified'), value: z.number().int().positive(), evidence: z.string().min(1) }).strict(),
+  z.object({ status: z.literal('unpublished'), evidence: z.string().min(1) }).strict(),
+  z.object({ status: z.literal('unverified') }).strict()
+]);
+export const quotaPolicyV3Schema = z.object({ schemaVersion: z.literal(3), groups: z.array(z.object({
+  id: z.string().min(1), provider: z.enum(['gemini', 'sarvam']), apis: z.array(z.object({
+    operation: z.enum(['generate', 'translate', 'transcribe', 'speak']), model: z.string().optional(),
+    verified: z.boolean(), limits: z.object({ rpm: limitSchema, tpm: limitSchema, rpd: limitSchema }).strict()
+  }).strict()).min(1)
+}).strict()).min(1) }).strict();
+export type QuotaGroup = { id: string; provider: 'gemini' | 'sarvam'; operation?: Operation; rpm?: number; tpm?: number; rpd?: number };
+export type Slot = { secret: string; group: string; id: string; operation?: Operation };
+export function operationReady(config: Configuration, provider: 'gemini' | 'sarvam', operation: Operation) {
+  return !config.problems.some(problem => !problem.startsWith('GEMINI_') && !problem.startsWith('SARVAM_')) &&
+    !(provider === 'gemini' && !config.model) && Boolean(config.groups.some(group => group.id === config.slots[provider]?.[0]?.group && group.provider === provider && (!group.operation || group.operation === operation)));
+}
 @Injectable()
 export class Configuration {
   readonly env = process.env;
   readonly problems: string[] = [];
   readonly groups: QuotaGroup[] = [];
   readonly slots: Record<'gemini' | 'sarvam', Slot[]> = { gemini: [], sarvam: [] };
+  readonly pendingPolicies: string[] = [];
   readonly port: number;
   readonly origins: string[];
   readonly mongoUri: string;
@@ -20,6 +37,7 @@ export class Configuration {
   readonly model: string;
   readonly translationModel: string;
   readonly credentialsPath: string;
+  readonly strictPrivacy = process.env.STRICT_PRIVACY_MODE !== 'false';
   constructor() {
     this.port = Number(this.env.PORT || 3001);
     if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) { this.problems.push('PORT'); this.port = 3001; }
@@ -48,10 +66,21 @@ export class Configuration {
       if (!this.slots[provider].length) this.problems.push(`${provider.toUpperCase()}_API_KEY_1`);
     }
     try {
-      const policy = quotaSchema.parse(JSON.parse(readFileSync(this.env.QUOTA_POLICY_PATH || '../../config/quota-policy.json', 'utf8')));
-      this.groups.push(...policy.groups);
+      const raw = JSON.parse(readFileSync(this.env.QUOTA_POLICY_PATH || '../../config/quota-policy.json', 'utf8'));
+      const policy = raw.schemaVersion === 3 ? quotaPolicyV3Schema.parse(raw) : quotaSchema.parse(raw);
+      if (policy.schemaVersion === 2) this.groups.push(...policy.groups);
+      else for (const group of policy.groups) {
+        const operations = new Set<string>();
+        for (const api of group.apis) {
+          if (operations.has(api.operation) || (group.provider === 'gemini') !== (api.operation === 'generate')) throw new Error('Invalid operation');
+          operations.add(api.operation);
+          const limits = Object.values(api.limits);
+          if (!api.verified || api.limits.rpm.status !== 'verified' || limits.some(limit => limit.status === 'unverified') || (group.provider === 'gemini' && api.model !== this.model)) { this.pendingPolicies.push(`${group.id}:${api.operation}`); continue; }
+          this.groups.push({ id: group.id, provider: group.provider, operation: api.operation, ...Object.fromEntries(Object.entries(api.limits).filter(([, limit]) => limit.status === 'verified').map(([key, limit]) => [key, limit.status === 'verified' ? limit.value : undefined])) });
+        }
+      }
       if (new Set(policy.groups.map(g => g.id)).size !== policy.groups.length) this.problems.push('QUOTA_POLICY_DUPLICATE_GROUP');
-      for (const provider of ['gemini', 'sarvam'] as const) for (const slot of this.slots[provider]) if (!this.groups.some(g => g.id === slot.group && g.provider === provider)) this.problems.push('QUOTA_POLICY_GROUP_MISMATCH');
+      for (const provider of ['gemini', 'sarvam'] as const) for (const slot of this.slots[provider]) if (!policy.groups.some(g => g.id === slot.group && g.provider === provider)) this.problems.push('QUOTA_POLICY_GROUP_MISMATCH');
     } catch { this.problems.push('QUOTA_POLICY_PATH'); }
   }
 }

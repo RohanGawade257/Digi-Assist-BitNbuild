@@ -12,3 +12,5 @@ config/quota-policy.json
 *.tsbuildinfo
 *.log
 .pnpm-store/
+
+/apps/web/public/vad/

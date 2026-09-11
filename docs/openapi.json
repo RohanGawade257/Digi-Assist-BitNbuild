@@ -1,0 +1,1322 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Digital Assistant",
+    "version": "0.2.0",
+    "description": "Implemented API. Source hash, target membership, freshness, privacy, quota and ownership checks run in code in addition to these JSON schemas. Approved PNG image analysis uses the authenticated turn route. No automatic raw image uploads, remote fetch, SSE or external-action routes."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "firebase": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        },
+        "security": []
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Local configuration, identity file and Mongo readiness; no live generation probe",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        },
+        "security": []
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "summary": "Configured and explicitly unverified provider capabilities",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Owner preferences",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update strict owner preferences",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Recent-login account deletion; retryable provider failure leaves local tombstone",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions": {
+      "post": {
+        "summary": "Create verified-user session with explicit history setting",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      },
+      "get": {
+        "summary": "List last 50 non-expired saved sessions",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}": {
+      "get": {
+        "summary": "Owner and idle-expiry checked session metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete saved or active session and discard late results",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}/history": {
+      "get": {
+        "summary": "Owner and retention checked saved text",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}/end": {
+      "post": {
+        "summary": "End session; preserve explicitly saved history only",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}/turns": {
+      "post": {
+        "summary": "Bounded synchronous typed/voice-reviewed turn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Turn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Answer"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}/turns/{requestId}/cancel": {
+      "post": {
+        "summary": "Cancel active turn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}/transcriptions": {
+      "post": {
+        "summary": "Explicitly consented PCM16 WAV input, at most 25 seconds and 3 MiB",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "metadata"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "metadata": {
+                    "type": "string",
+                    "description": "JSON-encoded SpeechMetadata. Raw audio is sent before transcript review."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/{id}/turns/{requestId}/audio": {
+      "post": {
+        "summary": "Read a server-owned answer chunk; Urdu output unavailable",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "requestId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PCM WAV",
+            "content": {
+              "audio/wav": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/sessions/{id}/speech/cancel": {
+      "post": {
+        "summary": "Cancel active speech operation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    },
+    "/feedback": {
+      "post": {
+        "summary": "Explicitly consented feedback; 90-day retention",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Feedback"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Safe error; code, messageKey, requestId and optional retryAfterMs. See docs/api.md."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "firebase": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Firebase ID token"
+      }
+    },
+    "schemas": {
+      "Turn": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "inputLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "replyLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "draftLocale": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "en-IN",
+                  "hi-IN",
+                  "bn-IN",
+                  "mr-IN",
+                  "te-IN",
+                  "ta-IN",
+                  "ur-IN"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taskKind": {
+            "type": "string",
+            "enum": [
+              "general-help",
+              "guide-task",
+              "draft-text"
+            ]
+          },
+          "inputMode": {
+            "type": "string",
+            "enum": [
+              "text",
+              "voice"
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "screenshot",
+                      "description",
+                      "desktop"
+                    ]
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "capturedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "contextMode": {
+                    "type": "string",
+                    "enum": [
+                      "reviewed-labels",
+                      "approved-image"
+                    ]
+                  },
+                  "reviewedLabels": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^label_[0-9]+$"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "approvedImage": {
+                    "type": "object",
+                    "properties": {
+                      "mimeType": {
+                        "type": "string",
+                        "const": "image/png"
+                      },
+                      "data": {
+                        "type": "string",
+                        "minLength": 40,
+                        "maxLength": 2796204,
+                        "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+                      },
+                      "width": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 2048
+                      },
+                      "height": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 2048
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "analysisConsent": {
+                        "type": "boolean",
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "mimeType",
+                      "data",
+                      "width",
+                      "height",
+                      "sha256",
+                      "analysisConsent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "selectedTarget": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "labelId": {
+                            "type": "string"
+                          },
+                          "sourceVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "normalizedRegion": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "y": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "width": {
+                                "type": "number",
+                                "exclusiveMinimum": 0,
+                                "maximum": 1
+                              },
+                              "height": {
+                                "type": "number",
+                                "exclusiveMinimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y",
+                              "width",
+                              "height"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "labelId",
+                          "sourceVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "checkedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "userReviewed": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "sanitizedHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "version",
+                  "capturedAt",
+                  "contextMode",
+                  "reviewedLabels",
+                  "selectedTarget",
+                  "userReviewed",
+                  "sanitizedHash"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nonSensitiveConfirmed": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "requestId",
+          "question",
+          "inputLocale",
+          "replyLocale",
+          "draftLocale",
+          "taskKind",
+          "inputMode",
+          "source",
+          "nonSensitiveConfirmed"
+        ],
+        "additionalProperties": false
+      },
+      "Answer": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "sourceVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "clarify",
+              "insufficient_context"
+            ]
+          },
+          "explanation": {
+            "type": "object",
+            "properties": {
+              "locale": {
+                "type": "string",
+                "enum": [
+                  "en-IN",
+                  "hi-IN",
+                  "bn-IN",
+                  "mr-IN",
+                  "te-IN",
+                  "ta-IN",
+                  "ur-IN"
+                ]
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "locale",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en-IN",
+                      "hi-IN",
+                      "bn-IN",
+                      "mr-IN",
+                      "te-IN",
+                      "ta-IN",
+                      "ur-IN"
+                    ]
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "locale",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "referencedLabels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^label_[0-9]+$"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                }
+              },
+              "required": [
+                "id",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "user-description",
+                    "approved-labels",
+                    "approved-image",
+                    "draft"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "requiresFreshContext": {
+            "type": "boolean"
+          },
+          "completionBasis": {
+            "type": "string",
+            "const": "not_completed"
+          }
+        },
+        "required": [
+          "requestId",
+          "sourceVersion",
+          "status",
+          "explanation",
+          "draft",
+          "referencedLabels",
+          "evidence",
+          "requiresFreshContext",
+          "completionBasis"
+        ],
+        "additionalProperties": false
+      },
+      "Source": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "screenshot",
+              "description",
+              "desktop"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "contextMode": {
+            "type": "string",
+            "enum": [
+              "reviewed-labels",
+              "approved-image"
+            ]
+          },
+          "reviewedLabels": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^label_[0-9]+$"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 160
+                }
+              },
+              "required": [
+                "id",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "approvedImage": {
+            "type": "object",
+            "properties": {
+              "mimeType": {
+                "type": "string",
+                "const": "image/png"
+              },
+              "data": {
+                "type": "string",
+                "minLength": 40,
+                "maxLength": 2796204,
+                "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+              },
+              "width": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2048
+              },
+              "height": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2048
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "analysisConsent": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "mimeType",
+              "data",
+              "width",
+              "height",
+              "sha256",
+              "analysisConsent"
+            ],
+            "additionalProperties": false
+          },
+          "selectedTarget": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "labelId": {
+                    "type": "string"
+                  },
+                  "sourceVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "normalizedRegion": {
+                    "type": "object",
+                    "properties": {
+                      "x": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 1
+                      },
+                      "height": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "x",
+                      "y",
+                      "width",
+                      "height"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "labelId",
+                  "sourceVersion"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "userReviewed": {
+            "type": "boolean",
+            "const": true
+          },
+          "sanitizedHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "kind",
+          "version",
+          "capturedAt",
+          "contextMode",
+          "reviewedLabels",
+          "selectedTarget",
+          "userReviewed",
+          "sanitizedHash"
+        ],
+        "additionalProperties": false
+      },
+      "PreferencesPatch": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "replyLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "interfaceLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "screenReaderMode": {
+            "type": "boolean"
+          },
+          "textScale": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2
+          },
+          "saveHistory": {
+            "type": "boolean"
+          },
+          "audioEnabled": {
+            "type": "boolean"
+          },
+          "speechRate": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5
+          },
+          "chatPinned": {
+            "type": "boolean"
+          },
+          "chatShortcutEnabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Preferences": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "replyLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "interfaceLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "screenReaderMode": {
+            "type": "boolean"
+          },
+          "textScale": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2
+          },
+          "saveHistory": {
+            "type": "boolean"
+          },
+          "audioEnabled": {
+            "type": "boolean"
+          },
+          "speechRate": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5
+          },
+          "chatPinned": {
+            "type": "boolean"
+          },
+          "chatShortcutEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "replyLocale",
+          "interfaceLocale",
+          "screenReaderMode",
+          "textScale",
+          "saveHistory",
+          "audioEnabled",
+          "speechRate",
+          "chatPinned",
+          "chatShortcutEnabled"
+        ],
+        "additionalProperties": false
+      },
+      "NewSession": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "historyEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "historyEnabled"
+        ],
+        "additionalProperties": false
+      },
+      "SpeechMetadata": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "inputLocale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          },
+          "cloudSpeechConsent": {
+            "type": "boolean",
+            "const": true
+          },
+          "automaticConversation": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "requestId",
+          "inputLocale",
+          "cloudSpeechConsent"
+        ],
+        "additionalProperties": false
+      },
+      "AudioRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "segment": {
+            "type": "string",
+            "enum": [
+              "explanation",
+              "draft"
+            ]
+          },
+          "chunk": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20
+          },
+          "pace": {
+            "default": 1,
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 1.5
+          }
+        },
+        "required": [
+          "segment",
+          "chunk"
+        ],
+        "additionalProperties": false
+      },
+      "Feedback": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-f0-9]{24}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "helpful",
+              "not-helpful"
+            ]
+          },
+          "text": {
+            "default": "",
+            "type": "string",
+            "maxLength": 500
+          },
+          "saveConsent": {
+            "type": "boolean",
+            "const": true
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en-IN",
+              "hi-IN",
+              "bn-IN",
+              "mr-IN",
+              "te-IN",
+              "ta-IN",
+              "ur-IN"
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "rating",
+          "saveConsent",
+          "locale"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

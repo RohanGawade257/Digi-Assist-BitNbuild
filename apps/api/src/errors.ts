@@ -8,7 +8,8 @@ export class ApiError extends HttpException {
 export class SafeErrors implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
-    const status = error instanceof HttpException ? error.getStatus() : 500;
+    const parserStatus = (error as { type?: string; status?: number })?.type;
+    const status = error instanceof HttpException ? error.getStatus() : parserStatus === 'entity.too.large' ? 413 : parserStatus === 'entity.parse.failed' ? 400 : 500;
     const code = error instanceof ApiError ? error.code : status === 404 ? 'NOT_FOUND' : status === 413 ? 'INPUT_TOO_LARGE' : status === 400 ? 'INVALID_INPUT' : 'INTERNAL_ERROR';
     response.setHeader('Cache-Control', 'no-store');
     response.status(status).json({ code, messageKey: code, requestId: randomUUID(), ...(error instanceof ApiError && error.retryAfterMs ? { retryAfterMs: error.retryAfterMs } : {}) });
