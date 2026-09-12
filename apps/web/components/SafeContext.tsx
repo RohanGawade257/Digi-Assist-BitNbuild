@@ -11,7 +11,7 @@ import {captureSource} from '../lib/capture-image';
 
 export type ContextState = { kind: 'none' | 'description' | 'screenshot' | 'desktop'; approved: boolean; captureMode?:'instant'|'review'; captureConsent?:boolean; surface?: string; mode?: Source['contextMode'] };
 export type ReviewHandle = { takeFresh:(signal:AbortSignal)=>Promise<Source>; fresh: (source: Source | null) => Promise<Source | null>; share: () => void; chooseFile: () => void; clear: () => void; approveByVoice: () => Promise<void> };
-export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (source: Source | null) => void; onState?: (state: ContextState) => void; resetKey: number; onExplainShare?: () => void; compact?:boolean; question?:string; onApproveAnswer?:(source:Source)=>Promise<void>; onShared?:()=>void; screenAllowed:boolean; screenMessage?:string; busy:boolean; onCapture:()=>void; onRevoke:()=>void; onExplainConsent:()=>void }>(function SafeContext({ t, onChange, onState, resetKey, onExplainShare, compact=false,question='',onApproveAnswer,onShared,screenAllowed,screenMessage,busy,onCapture,onRevoke,onExplainConsent }, ref) {
+export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (source: Source | null) => void; onState?: (state: ContextState) => void; resetKey: number; onExplainShare?: () => void; compact?:boolean; question?:string; onApproveAnswer?:(source:Source)=>Promise<void>; onShared?:()=>void; screenAllowed:boolean; screenMessage?:string; busy:boolean; onCapture:()=>void; onRevoke:()=>void; onExplainConsent:()=>void; onExplainPrivacy?: () => void }>(function SafeContext({ t, onChange, onState, resetKey, onExplainShare, compact=false,question='',onApproveAnswer,onShared,screenAllowed,screenMessage,busy,onCapture,onRevoke,onExplainConsent,onExplainPrivacy }, ref) {
   const { m, uiLocale } = useWords();
   const c=captureWords(uiLocale);
   const [sendMode,setSendMode]=useState<'instant'|'review'>('instant'),[sessionConsent,setSessionConsent]=useState(false);
@@ -128,6 +128,12 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
   }
   return <section className={`card context-card ${sendMode==='instant'?'instant-capture':'review-capture'}`} aria-labelledby="context-title">
     {sendMode==='instant'&&<><h2 id="context-title" tabIndex={-1}>{c.instant}</h2>
+      <div className="privacy-trust-bar">
+        <span className="privacy-trust-badge" title={m('Sensitive details are processed and masked in your browser before the protected screenshot is sent for AI assistance.')}>
+          🛡️ {busy ? m('Protecting your private information…') : image ? m('Private details protected') : m('Browser Privacy Protected')}
+        </span>
+        {onExplainPrivacy && <button type="button" className="text-button privacy-learn-trigger" onClick={onExplainPrivacy}>{m('How privacy works')}</button>}
+      </div>
       {!screenAllowed?<p className="hint">{screenMessage||c.blocked}</p>:sharing&&!sessionConsent?<div className="screen-consent-setup"><label className="check"><input type="checkbox" aria-label={c.consent} checked={sessionConsent} onChange={event=>{if(event.target.checked){consentFingerprint.current=fingerprint();screenConsent.current={mode:'on-demand',sourceId:sourceId.current,grantedAt:new Date().toISOString()};setSessionConsent(true);onExplainConsent();}else revoke();}}/>{c.consent}</label><button type="button" className="text-button" onClick={onExplainConsent}>{c.voice}</button></div>:sessionConsent?<p className="screen-enabled">{c.enabled} <button type="button" className="text-button" onClick={revoke}>{c.revoke}</button></p>:<p className="hint">{c.share}</p>}
       {!sharing&&<button type="button" className="primary share-primary" disabled={captureBusy} onClick={()=>void share()}>{m("Share screen")}</button>}<button type="button" hidden={!sharing} className="primary capture-send" disabled={!sharing||!sessionConsent||!screenAllowed||busy||captureBusy} onClick={onCapture}>{busy?c.processing:c.send}</button>
       {question&&<p className="queued-question" title={question}>{w.question}: {question}</p>}
@@ -144,6 +150,12 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
     {image && <fieldset><legend>{m('What should the assistant analyze?')}</legend><label className="check"><input type="radio" name="context-mode" checked={mode === 'approved-image'} onChange={() => { invalidate(); setMode('approved-image'); }}/>{m('Approved image')}</label><label className="check"><input type="radio" name="context-mode" checked={mode === 'reviewed-labels'} onChange={() => { revoke(); setSendMode('review'); setMode('reviewed-labels'); }}/>{m('Labels only (no image upload)')}</label></fieldset>}
     <p>{m('If visual review is difficult, choose labels only and type a public instruction instead. Do not approve an image you cannot review safely.')}</p><p>{w.occlusion}</p></details>
     {image && sendMode==='review' && mode === 'approved-image' && <>
+      <div className="privacy-trust-bar">
+        <span className="privacy-trust-badge" title={m('Sensitive details are processed and masked in your browser before the protected screenshot is sent for AI assistance.')}>
+          🛡️ {busy ? m('Protecting your private information…') : m('Browser Privacy Protected')}
+        </span>
+        {onExplainPrivacy && <button type="button" className="text-button privacy-learn-trigger" onClick={onExplainPrivacy}>{m('How privacy works')}</button>}
+      </div>
       <p className="snapshot-privacy">{w.privacy}</p>
       <ImageReview compact={compact} key={image} imageUrl={image} onEdit={() => { invalidate(); setPrepared(null); }} onPrepared={setPrepared}/>
       <label className="check"><input type="checkbox" checked={imageConsent} disabled={!prepared} onChange={event => { setImageConsent(event.target.checked); setApproved(false); onChange(null); }}/>{m('I reviewed this exact image and agree to send it to Gemini for AI analysis.')}</label>

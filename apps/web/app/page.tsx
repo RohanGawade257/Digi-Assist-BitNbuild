@@ -23,6 +23,10 @@ import { designWords } from '../lib/design-copy';
 import { VoiceAssistant } from '../components/VoiceAssistant';
 import { useVoiceAssistant } from '../lib/use-voice-assistant';
 import voiceCopy from '../lib/voice-copy.json';
+import { WhyVaaniSetu } from '../components/WhyVaaniSetu';
+import { HowItWorks } from '../components/HowItWorks';
+import { PrivacyExplainerModal } from '../components/PrivacyExplainerModal';
+import { HelpGuide } from '../components/HelpGuide';
 
 function LanguageSelect({ label, value, onChange, empty = false }: { label: string; value: string; onChange: (v: Locale) => void; empty?: boolean }) {
   const id = useId();
@@ -36,6 +40,7 @@ export default function Home() {
   const [inputLocale, setInputLocale] = useState<Locale>('en-IN');
   const [draftLocale, setDraftLocale] = useState<Locale | ''>('');
   const [onboarded, setOnboarded] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [verified, setVerified] = useState(false);
   const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
@@ -294,10 +299,34 @@ export default function Home() {
               <div id="auth-feedback" aria-busy={authBusy}><p role="status" aria-live="polite" aria-atomic="true">{authStatus}</p>{authError && <p className="error" role="alert">{authError}</p>}</div>
             </div>
 </Dialog>
-    <Dialog open={secondary!==null} title={secondary?d[secondary]:d.help} closeLabel={d.close} onClose={()=>setSecondary(null)}>{secondary==='help'?<><p>{helpText}</p><p>{workspaceWords(interfaceLocale).occlusion}</p><p>{workspaceWords(interfaceLocale).echo}</p></>:user&&secondary&&<AccountTools mode={secondary} sessionId={session.current} locale={interfaceLocale} onDeleted={()=>{setSecondary(null);void end();}}/>}</Dialog>
+    <Dialog open={secondary!==null} title={secondary?d[secondary]:d.help} closeLabel={d.close} onClose={()=>setSecondary(null)}>{secondary==='help'?<HelpGuide locale={interfaceLocale} onOpenPrivacy={()=>{setSecondary(null);setPrivacyModalOpen(true);}}/>:user&&secondary&&<AccountTools mode={secondary} sessionId={session.current} locale={interfaceLocale} onDeleted={()=>{setSecondary(null);void end();}}/>}</Dialog>
     <main id="main">
       {!onboarded ? <div className="onboarding">
-        <section className="intro"><span className="eyebrow">{m('YOUR LANGUAGE. YOUR PACE.')}</span><h1>{d.hero}</h1><p className="lead">{d.product}</p><AssistantVisual/><p className="boundary">{m('You stay in control. You make the clicks, check your details, and decide what to send.')}</p></section>
+        <section className="intro">
+          <span className="eyebrow">{m('YOUR LANGUAGE. YOUR PACE.')}</span>
+          <h1>{d.hero}</h1>
+          <p className="hero-core-statement">{m('Digital services should understand you.')}</p>
+          <p className="lead">{m("Speak in your language, show VaaniSetu where you're stuck, and receive simple step-by-step guidance — with privacy protection built into the screenshot workflow.")}</p>
+          <div className="hero-actions">
+            <button type="button" className="primary hero-primary-cta" onClick={() => { setOnboarded(true); setStatus(''); focusComposer(); }}>
+              🎙️ {m('Start Voice Assistant')}
+            </button>
+            <a href="#how-it-works" className="secondary hero-secondary-cta">
+              {m('See how it works')} ↓
+            </a>
+          </div>
+          <div className="hero-trust-strip" role="note" aria-label={m('Ways to start')}>
+            <span>🎙️ {m('Voice-first')}</span>
+            <span className="dot" aria-hidden="true">•</span>
+            <span>🌐 {m('Multilingual')}</span>
+            <span className="dot" aria-hidden="true">•</span>
+            <span>👣 {m('Step-by-step')}</span>
+            <span className="dot" aria-hidden="true">•</span>
+            <span>🛡️ {m('Privacy-aware')}</span>
+          </div>
+          <AssistantVisual/>
+          <p className="boundary">{m('You stay in control. You make the clicks, check your details, and decide what to send.')}</p>
+        </section>
         <GlassSurface as="section" className="card language-card"><h2>{t.choose}</h2><div className="language-grid" role="radiogroup" aria-label={t.choose}>{locales.map(locale=><button type="button" role="radio" aria-checked={replyLocale===locale} className={replyLocale===locale?'language selected':'language'} key={locale} lang={locale} onClick={()=>activateLanguage(locale)} onKeyDown={event=>{if(['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();const choices=Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('button'));const index=choices.indexOf(event.currentTarget);choices[(index+(['ArrowRight','ArrowDown'].includes(event.key)?1:choices.length-1))%choices.length]?.focus();}}}>{languageNames[locale]}</button>)}</div><p className="hint" lang={replyLocale}>{voiceCopy[replyLocale].consent}</p><button type="button" className="primary wide" onClick={() => { setOnboarded(true); setStatus(''); }}>{t.continue}<span aria-hidden="true"> →</span></button><p className="hint">{m('You can change these choices at any time. A microphone is never required.')}</p></GlassSurface>
       </div> : <div className={`journey ${ended?'session-ended':''}`}>
         <div className="journey-heading"><div><span className="eyebrow">{m('YOUR SPACE')}</span><h1>{ended?m('Assistance ended'):d.welcome}</h1><p>{ended?m('Screen sharing and recording have stopped. Start a new question whenever you are ready.'):d.choose}</p></div>{ended&&<div className="actions"><button type="button" className="primary" onClick={()=>{setEnded(false);setStarted(false);focusComposer();}}>{d.again}</button>{user&&<button type="button" className="text-button" onClick={()=>setSecondary('feedback')}>{d.feedback}</button>}</div>}</div>
@@ -309,7 +338,7 @@ export default function Home() {
         <div className="journey-grid" hidden={ended}>
           <div className="conversation-column">
             {serviceReady === false && <p className="notice">{m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')}</p>}
-            <FloatingPanel ref={floatingPanel} review={<SafeContext ref={contextReview} compact question={question} onApproveAnswer={async approved=>{const result=await send(undefined,approved);if(result)await voice.answer(result);}} screenAllowed={screenAllowed} screenMessage={!user?m('Sign in before sending. Your question stays here.'):!verified?t.verify:serviceReady===null?t.working:serviceReady===false?m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.'):undefined} busy={capturing||busy} onCapture={()=>void captureAndSend()} onRevoke={cancelCapture} onExplainConsent={()=>{void voice.explainConsent();}} onShared={()=>floatingPanel.current?.afterShare()} onExplainShare={()=>{void voice.explainConsent('share');}} t={t} onChange={changeSource} onState={setContextState} resetKey={resetKey}/>} needsReview={contextState.kind!=='none'&&!contextState.approved} question={question} error={error} caption={voice.caption} recovery={captureRetry&&canRetry?<button type="button" className="secondary" disabled={capturing||busy} onClick={()=>void captureAndSend()}>{captureWords(interfaceLocale).retry}</button>:null} ended={ended} onStopSpeaking={voice.stopSpeaking} voiceState={voice.state} onPause={()=>{if(['idle','paused','error'].includes(voice.state))void voice.resume();else voice.pause();}} onEnd={()=>void end()} sourceStatus={sourceName} onShare={()=>chooseStart('screen')} onCloseChat={()=>setOpen(false)} controls={<><button type="button" ref={launcher} className="secondary" aria-expanded={open} aria-controls="chat"  onClick={focusComposer}>{t.open}</button><label className="check"><input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)}/>{t.pin}</label></>} open={open} highContrast={opaque} locale={interfaceLocale} large={large} onOpen={() => setOpen(true)} onClosedReturn={()=>{}}>
+            <FloatingPanel ref={floatingPanel} review={<SafeContext ref={contextReview} compact question={question} onApproveAnswer={async approved=>{const result=await send(undefined,approved);if(result)await voice.answer(result);}} screenAllowed={screenAllowed} screenMessage={!user?m('Sign in before sending. Your question stays here.'):!verified?t.verify:serviceReady===null?t.working:serviceReady===false?m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.'):undefined} busy={capturing||busy} onCapture={()=>void captureAndSend()} onRevoke={cancelCapture} onExplainConsent={()=>{void voice.explainConsent();}} onShared={()=>floatingPanel.current?.afterShare()} onExplainShare={()=>{void voice.explainConsent('share');}} onExplainPrivacy={()=>setPrivacyModalOpen(true)} t={t} onChange={changeSource} onState={setContextState} resetKey={resetKey}/>} needsReview={contextState.kind!=='none'&&!contextState.approved} question={question} error={error} caption={voice.caption} recovery={captureRetry&&canRetry?<button type="button" className="secondary" disabled={capturing||busy} onClick={()=>void captureAndSend()}>{captureWords(interfaceLocale).retry}</button>:null} ended={ended} onStopSpeaking={voice.stopSpeaking} voiceState={voice.state} onPause={()=>{if(['idle','paused','error'].includes(voice.state))void voice.resume();else voice.pause();}} onEnd={()=>void end()} sourceStatus={sourceName} onShare={()=>chooseStart('screen')} onCloseChat={()=>setOpen(false)} controls={<><button type="button" ref={launcher} className="secondary" aria-expanded={open} aria-controls="chat"  onClick={focusComposer}>{t.open}</button><label className="check"><input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)}/>{t.pin}</label></>} open={open} highContrast={opaque} locale={interfaceLocale} large={large} onOpen={() => setOpen(true)} onClosedReturn={()=>{}}>
               <section className="card chat" id="chat" hidden={!open} aria-labelledby="chat-title" onKeyDown={e => { if (e.key === 'Escape' && !e.nativeEvent.isComposing) { e.preventDefault(); closeChat(); } }}>
                 <div className="section-heading"><h2 id="chat-title">{m('Your conversation')}</h2><button className="text-button" type="button" onClick={closeChat}>{t.close}</button></div>
                 <VoiceAssistant voice={voice} locale={replyLocale} onEnd={()=>void end()}/><div className="conversation-log" ref={conversationLog} tabIndex={messages.length ? 0 : undefined} role="region" aria-label={m('Conversation messages')}>
@@ -336,6 +365,11 @@ export default function Home() {
 
         </div>
       </div>}
-    {!onboarded&&<section className="feature-strip"><article><b>01</b><h2>{d.voice}</h2><p>{m('YOUR LANGUAGE. YOUR PACE.')}</p></article><article><b>02</b><h2>{d.visual}</h2><p>{m('You’re always in charge.')}</p></article><article><b>03</b><h2>{d.typing}</h2><p>{m('Type or speak. No screen is required.')}</p></article></section>}</main><footer className="footer"><span><strong>{brand.name}</strong> · {m('Made for a more accessible everyday.')}</span><span>{locales.map(locale=>languageNames[locale]).join(' / ')}</span></footer>
+      <WhyVaaniSetu onOpenPrivacy={() => setPrivacyModalOpen(true)} />
+      <HowItWorks onStartVoice={() => { setOnboarded(true); setStatus(''); focusComposer(); }} />
+      {!onboarded&&<section className="feature-strip"><article><b>01</b><h2>{d.voice}</h2><p>{m('YOUR LANGUAGE. YOUR PACE.')}</p></article><article><b>02</b><h2>{d.visual}</h2><p>{m('You’re always in charge.')}</p></article><article><b>03</b><h2>{d.typing}</h2><p>{m('Type or speak. No screen is required.')}</p></article></section>}
+    </main>
+    <PrivacyExplainerModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
+    <footer className="footer"><span><strong>{brand.name}</strong> · {m('Made for a more accessible everyday.')}</span><span>{locales.map(locale=>languageNames[locale]).join(' / ')}</span></footer>
   </div></WordsProvider>;
 }
