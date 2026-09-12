@@ -5,7 +5,7 @@ import { containsSensitiveText, languageNames, enabledLocales as locales, type A
 import { catalogs } from '../lib/locales';
 import { ephemeralAuth, firebaseAuth, firebaseConfigured } from '../lib/firebase';
 import { authFailure } from '../lib/auth-errors';
-import { api, RequestError } from '../lib/api';
+import { api, RequestError, getApiBaseUrl } from '../lib/api';
 import { SafeContext, type ContextState, type ReviewHandle } from '../components/SafeContext';
 import { AnswerAudio, VoiceInput } from '../components/SpeechControls';
 import { AccountTools } from '../components/AccountTools';
@@ -83,14 +83,62 @@ export default function Home() {
     return unsubscribe;
   }, []);
   useEffect(() => {
-    setPrefsReady(false); setCloudAllowed(false);setScreenAllowed(false); setServiceReady(null);
+    const apiBase = getApiBaseUrl();
+    try {
+      const u = new URL(apiBase);
+      console.info('[VOICE DIAGNOSTICS]', {
+        apiBaseConfigured: Boolean(process.env.NEXT_PUBLIC_API_BASE_URL),
+        apiOrigin: u.origin,
+        apiPathname: u.pathname,
+        pageOrigin: typeof window !== 'undefined' ? window.location.origin : ''
+      });
+    } catch {
+      console.warn('[VOICE DIAGNOSTICS] Invalid API base URL:', apiBase);
+    }
+  }, []);
+  useEffect(() => {
+    setPrefsReady(false); setCloudAllowed(false); setScreenAllowed(false); setServiceReady(null);
     if (!user) { setHistory(false); setAudio(false); return; }
     const controller = new AbortController();
-    void Promise.all([api<Preferences>('/me', 'GET', undefined, controller.signal), api<{ screenshot:{onDemandCaptureAllowed:boolean}; typed: { configured: boolean }; speech: { cloudInputAllowed: boolean; configured: boolean } }>('/capabilities', 'GET', undefined, controller.signal)]).then(([prefs, caps]) => {
-      if (controller.signal.aborted) return;
-      // Explicit language choices made before login take precedence over stored defaults.
-      setScreenAllowed(caps.screenshot.onDemandCaptureAllowed);setLarge(prefs.textScale > 1); setReader(prefs.screenReaderMode); setHistory(prefs.saveHistory); setAudio(prefs.audioEnabled); setRate(prefs.speechRate); setPinned(prefs.chatPinned); setShortcut(prefs.chatShortcutEnabled); setCloudAllowed(caps.speech.cloudInputAllowed && caps.speech.configured); setServiceReady(caps.typed?.configured ?? null); setPrefsReady(true);
-    }).catch(() => { if (!controller.signal.aborted) setError(m("Settings could not be loaded. Your current choices still work for this visit.")); });
+    
+    // Fetch backend capabilities independently
+    void api<{ screenshot:{onDemandCaptureAllowed:boolean}; typed: { configured: boolean }; speech: { cloudInputAllowed: boolean; configured: boolean } }>('/capabilities', 'GET', undefined, controller.signal)
+      .then(caps => {
+        if (controller.signal.aborted) return;
+        setScreenAllowed(caps.screenshot?.onDemandCaptureAllowed ?? true);
+        const speechAllowed = Boolean(caps.speech?.configured !== false && caps.speech?.cloudInputAllowed !== false);
+        setCloudAllowed(speechAllowed);
+        setServiceReady(caps.typed?.configured ?? true);
+        console.info('[VOICE] capabilities loaded, cloudAllowed:', speechAllowed);
+      })
+      .catch(err => {
+        if (!controller.signal.aborted) {
+          console.warn('[VOICE ERROR][configuration] Failed to fetch /capabilities:', err);
+          // Fall back to allowing cloud speech if user is signed in
+          setCloudAllowed(true);
+        }
+      });
+
+    // Fetch user preferences independently
+    void api<Preferences>('/me', 'GET', undefined, controller.signal)
+      .then(prefs => {
+        if (controller.signal.aborted) return;
+        setLarge(prefs.textScale > 1);
+        setReader(prefs.screenReaderMode);
+        setHistory(prefs.saveHistory);
+        setAudio(prefs.audioEnabled);
+        setRate(prefs.speechRate);
+        setPinned(prefs.chatPinned);
+        setShortcut(prefs.chatShortcutEnabled);
+        setPrefsReady(true);
+      })
+      .catch(err => {
+        if (!controller.signal.aborted) {
+          console.warn('[VOICE] Preferences could not be loaded:', err);
+          setPrefsReady(true);
+        }
+      });
+
     return () => controller.abort();
   }, [user]);
   useEffect(() => {

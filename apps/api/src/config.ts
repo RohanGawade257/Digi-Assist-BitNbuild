@@ -37,7 +37,7 @@ export class Configuration {
   readonly model: string;
   readonly translationModel: string;
   readonly credentialsPath: string;
-  readonly strictPrivacy = process.env.STRICT_PRIVACY_MODE !== 'false';
+  readonly strictPrivacy = process.env.STRICT_PRIVACY_MODE === 'true';
   constructor() {
     this.port = Number(this.env.PORT || 3001);
     if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) { this.problems.push('PORT'); this.port = 3001; }

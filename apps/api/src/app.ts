@@ -53,12 +53,20 @@ export class ApiController {
   @Post('sessions/:id/transcriptions') @HttpCode(200)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 3 * 1024 * 1024, files: 1, fields: 1, parts: 3, fieldSize: 1024 } }))
   async transcribe(@Req() req: AuthRequest, @Res({ passthrough: true }) res: Response, @Param('id') id: string, @Body() body: { metadata?: string }, @UploadedFile() file?: { buffer: Buffer; mimetype: string }) {
+    console.info(`[VOICE API] request received: /sessions/${id}/transcriptions`);
     requireVerified(req.identity);
+    console.info(`[VOICE API] auth ok: uid=${req.identity.uid}`);
     if (!file || file.mimetype !== 'audio/wav') throw new ApiError('INVALID_AUDIO');
+    console.info(`[VOICE API] audio received: size=${file.buffer.length} bytes`);
     if (typeof body?.metadata !== 'string' || Object.keys(body).some(key => key !== 'metadata')) throw new ApiError('INVALID_INPUT');
     let metadata: unknown; try { metadata = JSON.parse(body.metadata || ''); } catch { throw new ApiError('INVALID_INPUT'); }
     const controller = new AbortController(), close = () => { if (!res.writableEnded) controller.abort(); }; res.on('close', close);
-    try { return await this.speech.transcribe(req.identity.uid, id, metadata, file.buffer, controller.signal); }
+    console.info(`[VOICE API] transcription started`);
+    try {
+      const result = await this.speech.transcribe(req.identity.uid, id, metadata, file.buffer, controller.signal);
+      console.info(`[VOICE API] transcription completed`);
+      return result;
+    }
     finally { res.off('close', close); file.buffer.fill(0); }
   }
   @Post('sessions/:id/turns/:requestId/audio') @HttpCode(200)
@@ -70,11 +78,16 @@ export class ApiController {
   }
   @Post('sessions/:id/turns/:requestId/cancel') @HttpCode(204) async cancel(@Req() req: AuthRequest, @Param('id') id: string, @Param('requestId') requestId: string) { await this.sessions.owned(req.identity.uid, id); this.assistant.cancel(req.identity.uid, id, requestId); }
   @Post('sessions/:id/turns') @HttpCode(200) async turn(@Req() req: AuthRequest, @Res({ passthrough: true }) res: Response, @Param('id') id: string, @Body() body: unknown) {
+    console.info(`[VOICE API] query started: /sessions/${id}/turns`);
     requireVerified(req.identity);
     const controller = new AbortController();
     const close = () => { if (!res.writableEnded) controller.abort(); };
     res.on('close', close);
-    try { return await this.assistant.turn(req.identity.uid, id, body, controller.signal); }
+    try {
+      const result = await this.assistant.turn(req.identity.uid, id, body, controller.signal);
+      console.info(`[VOICE API] query completed`);
+      return result;
+    }
     finally { res.off('close', close); }
   }
 }
@@ -100,7 +113,23 @@ export function configureHttp(app: INestApplication) {
     } catch (error) { next(error); }
   });
   app.use((_req: unknown, res: Response, next: () => void) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff'); next(); });
-  app.enableCors({ origin: config.problems.includes('API_ALLOWED_ORIGINS') ? [] : config.origins, methods: ['GET', 'POST', 'PATCH', 'DELETE'], allowedHeaders: ['Authorization', 'Content-Type'], credentials: false });
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin) return callback(null, true);
+      if (config.origins.includes(origin)) return callback(null, true);
+      try {
+        const u = new URL(origin);
+        if ((u.protocol === 'https:' && u.hostname.endsWith('.vercel.app')) ||
+            ((u.protocol === 'http:' || u.protocol === 'https:') && ['localhost', '127.0.0.1'].includes(u.hostname))) {
+          return callback(null, true);
+        }
+      } catch {}
+      return callback(null, false);
+    },
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type'],
+    credentials: false
+  });
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new SafeErrors());
   app.enableShutdownHooks();

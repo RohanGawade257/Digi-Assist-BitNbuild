@@ -105,23 +105,55 @@ export function useVoiceAssistant(options: Options) {
     if (!active.current || phase.current !== 'listening' || turnLock.current) {samples.fill(0);return;}
     turnLock.current = true; const marker = epoch.current; transition('finalizing');
     if (maxTimer.current) clearTimeout(maxTimer.current); maxTimer.current = null;
+    
+    const sampleCount = samples.length;
+    const durationMs = Math.round((sampleCount / 16000) * 1000);
+    console.info(`[VOICE] speech-end`);
+    console.info(`[VOICE] samples received: ${sampleCount}`);
+    console.info(`[VOICE] audio duration: ${durationMs} ms`);
+
     // Keep the one local detector running; a new confirmed utterance cancels this turn.
     try {
-      if (!current.current.allowed) { current.current.needLogin(); await notice('login',marker); active.current = false; transition('paused'); return; }
-      if (!current.current.cloudAllowed) throw new RequestError('CLOUD_SPEECH_DISABLED');
+      if (!current.current.allowed) {
+        console.warn('[VOICE ERROR][auth] User not authenticated or unverified');
+        current.current.needLogin();
+        await notice('login',marker);
+        active.current = false;
+        transition('paused');
+        return;
+      }
+      if (!current.current.cloudAllowed) {
+        console.warn('[VOICE ERROR][configuration] Cloud speech input is disabled or not yet ready');
+        throw new RequestError('CLOUD_SPEECH_DISABLED', undefined, 'configuration');
+      }
       const wave = pcmWave(samples.slice(0, 25 * 16000),16000); samples.fill(0);
+      const audioBlob = new Blob([new Uint8Array(wave)],{type:'audio/wav'});
+      console.info(`[VOICE] blob size: ${audioBlob.size} bytes`);
       const controller = new AbortController(); pending.current = controller;
+      
+      console.info('[VOICE] ensuring session before upload');
       const id = await current.current.ensureSession(controller.signal);
-      const form = new FormData(); form.set('file',new Blob([new Uint8Array(wave)],{type:'audio/wav'}),'question.wav');
+      const form = new FormData(); form.set('file',audioBlob,'question.wav');
       form.set('metadata',JSON.stringify({requestId:crypto.randomUUID(),inputLocale:language.current,cloudSpeechConsent:true,automaticConversation:true}));
       transition('processing');
+      console.info(`[VOICE] upload starting`, {
+        endpoint: `/sessions/${id}/transcriptions`,
+        blobSize: audioBlob.size,
+        mimeType: 'audio/wav'
+      });
       const response = await authenticatedFetch(`/sessions/${id}/transcriptions`,'POST',form,controller.signal);
+      console.info(`[VOICE] response status: ${response.status}`);
       const result = await response.json(); controller.signal.throwIfAborted();
       const text = typeof result.transcript === 'string' ? result.transcript.trim() : '';
-      if (!text) throw new RequestError('SPEECH_UNCLEAR');
+      if (!text) {
+        console.warn('[VOICE ERROR][transcription] Received empty transcript from STT');
+        throw new RequestError('SPEECH_UNCLEAR', undefined, 'transcription');
+      }
+      console.info(`[VOICE] transcription received: "${text}"`);
       setCaption(text);
       const command = voiceCommand(text,language.current);
       if (command) {
+        console.info(`[VOICE] recognized voice command: ${command}`);
         if (command === 'stop') { transition('listening');turnLock.current=false;return; }
         if (command === 'end') { end(); await current.current.command(command); return; }
         if (command === 'repeat' || command === 'slower') {
@@ -129,19 +161,33 @@ export function useVoiceAssistant(options: Options) {
           if (last.current) await speakResult(last.current,marker); else await notice('unclear',marker);
         } else await current.current.command(command);
       } else {
+        console.info('[VOICE] processing query with AI assistant');
         const answered = await current.current.question(text,controller.signal);
-        if (!answered) throw new RequestError('CONTEXT_REVIEW_REQUIRED');
-        controller.signal.throwIfAborted(); last.current = answered; await speakResult(answered,marker);
+        if (!answered) {
+          console.warn('[VOICE ERROR][query] Context review required or no response from assistant');
+          throw new RequestError('CONTEXT_REVIEW_REQUIRED', undefined, 'query');
+        }
+        controller.signal.throwIfAborted(); last.current = answered;
+        console.info('[VOICE] playing assistant response');
+        await speakResult(answered,marker);
       }
-      failures.current = 0; await listen(marker);
+      failures.current = 0;
+      console.info('[VOICE] processing finished');
+      await listen(marker);
+      console.info('[VOICE] listening resumed');
     } catch (error) {
       if (marker !== epoch.current || !active.current) return;
       const code = error instanceof RequestError ? error.code : error instanceof Error ? error.message : 'VOICE_ERROR';
+      const stage = error instanceof RequestError ? (error.stage || 'pipeline') : 'pipeline';
+      console.error(`[VOICE ERROR][${stage}]`, error);
       const kind: Notice = code === 'SPEECH_UNCLEAR' ? 'unclear' : ['CONTEXT_REVIEW_REQUIRED','CONTEXT_STALE'].includes(code) ? 'review' : 'error';
       setDetail(copy[language.current][kind]);
       try { await notice(kind,marker); } catch { /* Captions and large restart action remain. */ }
       if (marker !== epoch.current) return;
-      if ((kind === 'unclear' || kind === 'review') && ++failures.current <= 2) { await listen(marker).catch(() => { pause();transition('error'); }); }
+      if ((kind === 'unclear' || kind === 'review') && ++failures.current <= 2) {
+        console.info('[VOICE] auto-recovering and resuming listening after notice');
+        await listen(marker).catch(() => { pause();transition('error'); });
+      }
       else { pause();transition('error'); }
     }
   }
@@ -191,10 +237,15 @@ export function useVoiceAssistant(options: Options) {
     }
   }
   async function resume() {
-    if (!vad.current) { await start(); return; }
-    active.current=true; failures.current=0;
-    // Recreate to avoid retaining permission callbacks from an earlier canceled epoch.
-    const old=vad.current;vad.current=null;await old.destroy().catch(()=>{});await start();
+    if (!vad.current || vad.current.errored) { await start(); return; }
+    active.current=true; failures.current=0; setDetail('');
+    const marker = ++epoch.current;
+    try {
+      await listen(marker);
+      console.info('[VOICE] listening resumed from existing VAD');
+    } catch {
+      await start();
+    }
   }
   async function announce(kind: Notice) { pause();language.current=current.current.locale; const marker=epoch.current; try { await notice(kind,marker); if(marker===epoch.current)transition('paused'); } catch { if(marker===epoch.current){setCaption(copy[language.current][kind]);transition('error');} } }
   function stopSpeaking() { if(active.current && ['speaking','processing'].includes(phase.current))interruptPlayback();else pause(); }

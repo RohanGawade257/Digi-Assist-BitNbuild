@@ -12,14 +12,20 @@ export class SpeechDetector {
     const positive=!echo && probability>=.3;
     if (!this.frames.length) {
       if (!positive) { this.pre.push(frame);while(this.pre.length*ms>800)this.pre.shift()?.fill(0);return; }
+      console.info('[VOICE] speech-start');
       this.frames=this.pre;this.pre=[];
     }
     this.frames.push(frame);
     if(positive){this.speech+=ms;this.silence=0;}else if(echo || probability<.25)this.silence+=ms;
-    if(!this.confirmed && this.speech>=320){this.confirmed=true;this.options.confirm();}
+    if(!this.confirmed && this.speech>=320){
+      this.confirmed=true;
+      console.info('[VOICE] speech confirmed (duration >= 320ms)');
+      this.options.confirm();
+    }
     if(this.frames.length*ms>=25000){this.clear();this.options.tooLong();return;}
     if(this.silence>=this.options.pauseMs()) {
       const accepted=this.confirmed;
+      console.info(`[VOICE] speech-end (silence threshold ${this.options.pauseMs()}ms reached, accepted=${accepted})`);
       const audio=new Float32Array(this.frames.reduce((sum,item)=>sum+item.length,0));let offset=0;
       for(const item of this.frames){audio.set(item,offset);offset+=item.length;}
       this.clear();if(accepted)this.options.complete(audio);else audio.fill(0);
