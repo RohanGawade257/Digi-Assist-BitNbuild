@@ -50,15 +50,30 @@ export interface SanitizedScreenshot {
   privacyVersion: string;
 }
 
-/** Result when sanitization fails — the raw image MUST NOT be sent. */
-export interface SanitizationFailure {
+/** Generic sanitization failure. */
+export interface SanitizationError {
   readonly __brand: 'SanitizationFailure';
   sanitized: false;
+  reviewRequired?: false;
   error: string;
 }
+
+/** Sensitive-form safety gate failure when high-risk labels are present but 0 redactions made. */
+export interface SanitizationReviewRequired {
+  readonly __brand: 'SanitizationFailure';
+  sanitized: false;
+  reviewRequired: true;
+  error: string;
+}
+
+export type SanitizationFailure = SanitizationError | SanitizationReviewRequired;
 
 export type SanitizationResult = SanitizedScreenshot | SanitizationFailure;
 
 export function isSanitized(result: SanitizationResult): result is SanitizedScreenshot {
   return result.sanitized === true;
+}
+
+export function isReviewRequired(result: SanitizationResult): result is SanitizationReviewRequired {
+  return !result.sanitized && 'reviewRequired' in result && result.reviewRequired === true;
 }

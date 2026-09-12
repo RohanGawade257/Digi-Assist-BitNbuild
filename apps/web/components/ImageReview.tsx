@@ -27,7 +27,12 @@ export function ImageReview({ imageUrl, onEdit, onPrepared, compact=false }: { i
     if (!isSanitized(sanitizationResult)) {
       // FAIL CLOSED: do NOT prepare the raw image for upload
       console.error('[PRIVACY] Sanitization failed — blocking image preparation');
-      throw new Error('PRIVACY_SANITIZATION_FAILED');
+      if (sanitizationResult.reviewRequired) {
+        setError(m("We found a sensitive form but couldn't safely verify all private details. Please review the screenshot before sending."));
+      } else {
+        setError(m('Privacy protection failed to verify this screenshot. Please mask sensitive areas manually.'));
+      }
+      return;
     }
 
     setPrivacyInfo(sanitizationResult.redactionCount > 0 ? { count: sanitizationResult.redactionCount, categories: sanitizationResult.categories } : null);

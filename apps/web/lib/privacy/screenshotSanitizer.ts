@@ -18,7 +18,7 @@
  */
 
 import type { SanitizedScreenshot, SanitizationResult, PIICategory } from './types';
-import { detectPII, type OCRWord } from './detector';
+import { detectPIIWithDiagnostics, type OCRWord } from './detector';
 
 const PRIVACY_VERSION = '1';
 
@@ -159,14 +159,31 @@ export async function sanitizeScreenshot(
 
     // ─── Step 4: Detect PII regions ──────────────────────────────────
 
-    const redactions = detectPII(ocrWords, width, height);
+    const detection = detectPIIWithDiagnostics(ocrWords, width, height);
+    const redactions = detection.redactions;
+
+    console.info(`[PRIVACY] OCR lines reconstructed: ${detection.linesReconstructed}`);
+    console.info(`[PRIVACY] high-risk labels detected: ${detection.highRiskLabelsCount}`);
     console.info(`[PRIVACY] Candidate regions: ${redactions.length}`);
+
+    // ─── Safety Gate ─────────────────────────────────────────────────
+    if (detection.reviewRequired) {
+      console.warn('[PRIVACY] High-risk form labels detected with 0 redactions — safety review required');
+      return {
+        __brand: 'SanitizationFailure',
+        sanitized: false,
+        reviewRequired: true,
+        error: "PRIVACY_REVIEW_REQUIRED: We found a sensitive form but couldn't safely verify all private details. Please review the screenshot before sending.",
+      };
+    }
 
     // ─── Step 5: Apply irreversible Canvas redaction ─────────────────
 
     if (redactions.length > 0) {
       applyRedactions(ctx, redactions, width, height);
       console.info(`[PRIVACY] Redactions applied: ${redactions.length}`);
+    } else {
+      console.info('[PRIVACY] Redactions applied: 0');
     }
 
     // ─── Step 6: Export sanitized image ──────────────────────────────

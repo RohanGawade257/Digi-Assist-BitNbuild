@@ -16,6 +16,9 @@ export async function captureSource(capture:LocalCapture,version:number,consent:
  if (!isSanitized(sanitizationResult)) {
    // FAIL CLOSED: do NOT send the raw screenshot
    console.error('[PRIVACY] Sanitization failed — blocking upload');
+   if (sanitizationResult.reviewRequired) {
+     throw new Error('PRIVACY_REVIEW_REQUIRED');
+   }
    throw new Error('PRIVACY_SANITIZATION_FAILED');
  }
 

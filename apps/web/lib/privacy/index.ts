@@ -6,7 +6,7 @@
  */
 
 export { sanitizeScreenshot, preloadOCR, terminateOCR, isOCRReady } from './screenshotSanitizer';
-export { detectPII } from './detector';
-export { isSanitized } from './types';
-export type { SanitizedScreenshot, SanitizationResult, SanitizationFailure, PIICategory, Redaction } from './types';
-export type { OCRWord } from './detector';
+export { detectPII, detectPIIWithDiagnostics, buildLines, normalizeText } from './detector';
+export { isSanitized, isReviewRequired } from './types';
+export type { SanitizedScreenshot, SanitizationResult, SanitizationFailure, SanitizationReviewRequired, PIICategory, Redaction } from './types';
+export type { OCRWord, ReconstructedLine, WordSpan, DetectionResult } from './detector';
