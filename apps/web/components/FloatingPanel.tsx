@@ -29,10 +29,9 @@ export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPan
  useEffect(()=>{if(ended)floating.current?.close();},[ended]);
  useEffect(()=>{if(pin||needsReview||question||error)setMinimized(false);},[pin,needsReview,question,error]);
  function restore(){if(host)place.current?.append(host);floating.current=null;setOutside(false);setMinimized(false);setSettings(false);setShowCaption(false);if(!latest.current.ended)setNotice(w.closed);latest.current.onClosedReturn();}
- function repositionWindow(targetWidth: number, targetHeight: number) {
-  if (!floating.current) return;
+ /** Called ONCE right after the PiP window is created. Never called again. */
+ function positionWindowOnce(win: Window, targetWidth: number, targetHeight: number) {
   try {
-   const win = floating.current;
    const s = win.screen || window.screen;
    const availW = s.availWidth;
    const availH = s.availHeight;
@@ -42,14 +41,22 @@ export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPan
    const targetY = Math.max(availTop, availTop + availH - targetHeight - 32);
    win.resizeTo(targetWidth, targetHeight);
    win.moveTo(targetX, targetY);
+   console.info('[FLOATING] window positioned', { targetWidth, targetHeight, targetX, targetY, screenAvailHeight: availH });
   } catch {/* Browser may restrict coordinates */}
  }
  async function openWindow(){
-  if(floating.current){floating.current.focus();return;}if(opening.current||!host)return;
+  if(floating.current){floating.current.focus();console.info('[FLOATING] existing window reused');return;}
+  if(opening.current||!host)return;
   opening.current=true;setNotice('');
   try{
-    const initialH = open ? 520 : caption ? 350 : 300;
-   const next=await (window as unknown as {documentPictureInPicture:PipApi}).documentPictureInPicture.requestWindow({width:380,height:initialH});
+   const pipWidth = 390;
+   const s = window.screen;
+   const availH = s.availHeight;
+   const topOffset = 40;  // approx distance from top of screen to desired top of panel
+   const bottomGap = 16;
+   const pipHeight = Math.max(500, availH - topOffset - bottomGap);
+   console.info('[FLOATING] opening assistant', { pipWidth, pipHeight, screenAvailHeight: availH });
+   const next=await (window as unknown as {documentPictureInPicture:PipApi}).documentPictureInPicture.requestWindow({width:pipWidth,height:pipHeight});
    floating.current=next;next.document.title=brand.title;next.document.documentElement.lang=locale;
    const base=next.document.createElement('base');base.href=document.baseURI;next.document.head.append(base);
    for(const sheet of Array.from(document.styleSheets)){
@@ -57,40 +64,29 @@ export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPan
     catch{if(sheet.href){const link=next.document.createElement('link');link.rel='stylesheet';link.href=sheet.href;next.document.head.append(link);}}
    }
    next.document.documentElement.classList.add('pip-document');
-   next.document.documentElement.style.overflow='hidden';
-   next.document.body.style.overflow='hidden';
-   next.document.body.style.margin='0';
+   next.document.documentElement.style.cssText='width:100%;height:100%;margin:0;overflow:hidden;';
+   next.document.body.style.cssText='width:100%;height:100%;margin:0;overflow:hidden;';
    next.document.body.append(host);setOutside(true);setTab('review');onCloseChat();
-   setTimeout(()=>repositionWindow(380, initialH), 60);
+   // Position once after browser has created the window — never again
+   setTimeout(()=>positionWindowOnce(next, pipWidth, pipHeight), 60);
    next.addEventListener('pagehide',restore,{once:true});
+   console.info('[FLOATING] window created');
   }catch{setNotice(w.fallback);}finally{opening.current=false;}
  }
  useImperativeHandle(ref,()=>({afterShare:()=>{setTab('review');setMinimized(false);if(supported&&!floating.current){setNotice(w.open);if(navigator.userActivation?.isActive)void openWindow();}},review:()=>{setTab('review');setMinimized(false);setTimeout(()=>host?.querySelector<HTMLElement>('#context-title')?.focus(),0);}}));
- useEffect(()=>{
-  if(!outside)return;
-  const compactHeight=host?Math.min(Math.max(host.scrollHeight+42,230),410):300;
-  const targetHeight=open?520:minimized?96:compactHeight;
-  repositionWindow(380,targetHeight);
- },[outside,open,minimized,idle,protectedView,caption,error,question,voiceState,host]);
- useEffect(()=>{
-  if(!outside||!host||open||minimized)return;
-  const observer=new ResizeObserver(()=>{
-   const targetHeight=Math.min(Math.max(host.scrollHeight+42,230),410);
-   repositionWindow(380,targetHeight);
-  });
-  observer.observe(host);
-  return()=>observer.disconnect();
- },[outside,host,open,minimized]);
+ // NOTE: NO useEffect that calls resizeTo/moveTo on state changes.
+ // NOTE: NO ResizeObserver that resizes the outer window.
+ // The outer PiP window size is set ONCE in openWindow() and then left entirely
+ // to the browser/user. Internal content scrolls via CSS instead.
  function toggleChat(){
   if(open){
    onCloseChat();
    setTab('review');
-   const compactH=host?Math.min(Math.max(host.scrollHeight+42,230),410):250;
-   repositionWindow(380,compactH);
+   // Content change only — outer window is NOT resized
   }else{
    onOpen();
    setTab('chat');
-   repositionWindow(380,520);
+   // Content change only — outer window is NOT resized
   }
  }
  return <><div className="floating-toolbar">{controls}{supported?<button id="open-floating-assistant" type="button" className="primary" onClick={()=>void openWindow()}>{w.open}</button>:<p>{w.fallback}</p>}{notice&&<p role="status">{notice}</p>}</div><div ref={place}/>{host&&createPortal(
