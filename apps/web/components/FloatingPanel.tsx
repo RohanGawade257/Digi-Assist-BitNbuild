@@ -48,7 +48,7 @@ export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPan
   if(floating.current){floating.current.focus();return;}if(opening.current||!host)return;
   opening.current=true;setNotice('');
   try{
-   const initialH = open ? 520 : caption ? 350 : 250;
+    const initialH = open ? 520 : caption ? 350 : 300;
    const next=await (window as unknown as {documentPictureInPicture:PipApi}).documentPictureInPicture.requestWindow({width:380,height:initialH});
    floating.current=next;next.document.title=brand.title;next.document.documentElement.lang=locale;
    const base=next.document.createElement('base');base.href=document.baseURI;next.document.head.append(base);
@@ -68,7 +68,7 @@ export const FloatingPanel=forwardRef<FloatingHandle,Props>(function FloatingPan
  useImperativeHandle(ref,()=>({afterShare:()=>{setTab('review');setMinimized(false);if(supported&&!floating.current){setNotice(w.open);if(navigator.userActivation?.isActive)void openWindow();}},review:()=>{setTab('review');setMinimized(false);setTimeout(()=>host?.querySelector<HTMLElement>('#context-title')?.focus(),0);}}));
  useEffect(()=>{
   if(!outside)return;
-  const compactHeight=host?Math.min(Math.max(host.scrollHeight+42,230),410):250;
+  const compactHeight=host?Math.min(Math.max(host.scrollHeight+42,230),410):300;
   const targetHeight=open?520:minimized?96:compactHeight;
   repositionWindow(380,targetHeight);
  },[outside,open,minimized,idle,protectedView,caption,error,question,voiceState,host]);
