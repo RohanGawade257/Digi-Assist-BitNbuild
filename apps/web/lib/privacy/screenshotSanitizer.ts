@@ -117,6 +117,7 @@ export async function sanitizeScreenshot(
 
     const width = bitmap.width;
     const height = bitmap.height;
+    console.info(`[PRIVACY] original image: ${width}x${height}`);
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -137,7 +138,10 @@ export async function sanitizeScreenshot(
     const worker = await getWorker();
 
     // Extract the canvas data as an image for Tesseract
-    const imageData = ctx.getImageData(0, 0, width, height);
+    const ocrWidth = width;
+    const ocrHeight = height;
+    console.info(`[PRIVACY] OCR image: ${ocrWidth}x${ocrHeight}`);
+    console.info(`[PRIVACY] scale mapping: x=${width / ocrWidth} y=${height / ocrHeight}`);
     const result = await worker.recognize(canvas);
     console.info('[PRIVACY] OCR completed');
 
@@ -164,7 +168,8 @@ export async function sanitizeScreenshot(
 
     console.info(`[PRIVACY] OCR lines reconstructed: ${detection.linesReconstructed}`);
     console.info(`[PRIVACY] high-risk labels detected: ${detection.highRiskLabelsCount}`);
-    console.info(`[PRIVACY] Candidate regions: ${redactions.length}`);
+    console.info(`[PRIVACY] Exact candidate regions: ${detection.exactRedactionsCount}`);
+    console.info(`[PRIVACY] Fallback sensitive regions: ${detection.fallbackRedactionsCount}`);
 
     // ─── Safety Gate ─────────────────────────────────────────────────
     if (detection.reviewRequired) {
@@ -203,6 +208,9 @@ export async function sanitizeScreenshot(
     // ─── Step 8: Collect categories ──────────────────────────────────
 
     const categories = [...new Set(redactions.map(r => r.category))];
+
+    console.info('[PRIVACY] Sanitization complete');
+    console.info('[PRIVACY] upload allowed');
 
     const sanitized: SanitizedScreenshot = {
       __brand: 'SanitizedScreenshot',

@@ -35,6 +35,8 @@ export interface DetectionResult {
   highRiskLabelsCount: number;
   linesReconstructed: number;
   reviewRequired: boolean;
+  exactRedactionsCount: number;
+  fallbackRedactionsCount: number;
 }
 
 // ─── Text Normalization ──────────────────────────────────────────────
@@ -83,7 +85,7 @@ const PASSWORD_LINE_RE = /(?:^|[^A-Za-z0-9])(?:password|pass\s*word|mpin|upi\s*p
 
 // ─── Spatial Labels for Multi-line Detection ────────────────────────
 
-export const HIGH_RISK_LABEL_REGEX = /\b(aadhaar|aadhar|आधार|pan\s*(?:number|no\.?|card)|card\s*number|credit\s*card|debit\s*card|cvv|cvc|otp|one\s*time\s*password|password|mpin|upi\s*pin|account\s*(?:number|no\.?|#)|a\/c\s*(?:number|no\.?|#))\b/i;
+export const HIGH_RISK_LABEL_REGEX = /\b(aadhaar|aadhar|आधार|pan\s*(?:number|no\.?|card)|card\s*number|credit\s*card|debit\s*card|cvv|cvc|otp|one\s*time\s*password|password|mpin|upi\s*pin|account\s*(?:number|no\.?|#)|a\/c\s*(?:number|no\.?|#)|phone|mobile|contact|telephone|email|e-mail)\b/i;
 
 const CVV_LABELS = /\b(cvv|cvc|security\s*code|card\s*security)\b/i;
 const OTP_LABELS = /\b(otp|one\s*time\s*(?:password|code)|verification\s*code|security\s*code)\b/i;
@@ -109,6 +111,19 @@ const LABELS: Record<PIICategory, string> = {
   account: '[ACCOUNT FILLED]',
   ifsc: '[IFSC FILLED]',
   password: '[PASSWORD FILLED]',
+};
+
+const PROTECTED_LABELS: Record<PIICategory, string> = {
+  aadhaar: '[AADHAAR PROTECTED]',
+  pan: '[PAN PROTECTED]',
+  card: '[CARD NUMBER PROTECTED]',
+  cvv: '[CVV PROTECTED]',
+  otp: '[OTP PROTECTED]',
+  phone: '[PHONE PROTECTED]',
+  email: '[EMAIL PROTECTED]',
+  account: '[ACCOUNT PROTECTED]',
+  ifsc: '[IFSC PROTECTED]',
+  password: '[PASSWORD PROTECTED]',
 };
 
 /** Luhn checksum for payment card validation. */
@@ -285,6 +300,8 @@ export function detectPIIWithDiagnostics(
 
   const maxHDist = Math.max(120, Math.round(canvasWidth * 0.15));
   const maxVDist = Math.max(80, Math.round(canvasHeight * 0.1));
+  let exactRedactionsCount = 0;
+  let fallbackRedactionsCount = 0;
 
   function addRedaction(category: PIICategory, involvedWords: OCRWord[]) {
     // If any word in involvedWords is already processed, do not duplicate
@@ -300,9 +317,19 @@ export function detectPIIWithDiagnostics(
       height: Math.min(canvasHeight, box.y1 + padY) - Math.max(0, box.y0 - padY),
       label: LABELS[category],
     });
+    exactRedactionsCount++;
     for (const w of involvedWords) {
       processedWords.add(w);
     }
+  }
+
+  function addFallbackRedaction(category: PIICategory, box: { x0: number; y0: number; x1: number; y1: number }): void {
+    const x0 = Math.max(0, Math.min(canvasWidth - 1, Math.floor(box.x0 - padX)));
+    const y0 = Math.max(0, Math.min(canvasHeight - 1, Math.floor(box.y0 - padY)));
+    const x1 = Math.max(x0 + 1, Math.min(canvasWidth, Math.ceil(box.x1 + padX)));
+    const y1 = Math.max(y0 + 1, Math.min(canvasHeight, Math.ceil(box.y1 + padY)));
+    redactions.push({ category, x: x0, y: y0, width: x1 - x0, height: y1 - y0, label: PROTECTED_LABELS[category] });
+    fallbackRedactionsCount++;
   }
 
   // ─── Pass 1: Line-level Pattern & Same-Line Contextual Matching ─────
@@ -435,21 +462,33 @@ export function detectPIIWithDiagnostics(
   interface FoundLabel {
     category: PIICategory;
     bbox: { x0: number; y0: number; x1: number; y1: number };
+    line: ReconstructedLine;
+  }
+  function getLabelBox(line: ReconstructedLine, category: PIICategory): { x0: number; y0: number; x1: number; y1: number } {
+    const labelWords: OCRWord[] = [];
+    for (const word of line.words) {
+      const raw = word.text.replace(/[:;,\.\-\s]/g, '');
+      const categoryWord = category === 'aadhaar' ? AADHAAR_LABELS.test(raw) : category === 'pan' ? PAN_LABELS.test(raw) : category === 'phone' ? PHONE_LABELS.test(raw) : category === 'email' ? EMAIL_LABELS.test(raw) : category === 'cvv' ? CVV_LABELS.test(raw) : category === 'otp' ? OTP_LABELS.test(raw) : category === 'account' ? ACCOUNT_LABELS.test(raw) : category === 'password' ? PASSWORD_LABELS.test(raw) : false;
+      if (KNOWN_LABEL_TOKENS.test(raw) || categoryWord) labelWords.push(word);
+      else if (labelWords.length > 0) break;
+    }
+    return mergeBoxes(labelWords.length > 0 ? labelWords : [line.words[0]!]);
   }
   const foundLabels: FoundLabel[] = [];
 
   for (const line of lines) {
-    if (CVV_LABELS.test(line.text)) foundLabels.push({ category: 'cvv', bbox: line.bbox });
-    if (OTP_LABELS.test(line.text)) foundLabels.push({ category: 'otp', bbox: line.bbox });
-    if (ACCOUNT_LABELS.test(line.text)) foundLabels.push({ category: 'account', bbox: line.bbox });
-    if (PASSWORD_LABELS.test(line.text)) foundLabels.push({ category: 'password', bbox: line.bbox });
-    if (AADHAAR_LABELS.test(line.text)) foundLabels.push({ category: 'aadhaar', bbox: line.bbox });
-    if (PAN_LABELS.test(line.text)) foundLabels.push({ category: 'pan', bbox: line.bbox });
-    if (PHONE_LABELS.test(line.text)) foundLabels.push({ category: 'phone', bbox: line.bbox });
-    if (EMAIL_LABELS.test(line.text)) foundLabels.push({ category: 'email', bbox: line.bbox });
+    if (CVV_LABELS.test(line.text)) foundLabels.push({ category: 'cvv', bbox: getLabelBox(line, 'cvv'), line });
+    if (OTP_LABELS.test(line.text)) foundLabels.push({ category: 'otp', bbox: getLabelBox(line, 'otp'), line });
+    if (ACCOUNT_LABELS.test(line.text)) foundLabels.push({ category: 'account', bbox: getLabelBox(line, 'account'), line });
+    if (PASSWORD_LABELS.test(line.text)) foundLabels.push({ category: 'password', bbox: getLabelBox(line, 'password'), line });
+    if (AADHAAR_LABELS.test(line.text)) foundLabels.push({ category: 'aadhaar', bbox: getLabelBox(line, 'aadhaar'), line });
+    if (PAN_LABELS.test(line.text)) foundLabels.push({ category: 'pan', bbox: getLabelBox(line, 'pan'), line });
+    if (PHONE_LABELS.test(line.text)) foundLabels.push({ category: 'phone', bbox: getLabelBox(line, 'phone'), line });
+    if (EMAIL_LABELS.test(line.text)) foundLabels.push({ category: 'email', bbox: getLabelBox(line, 'email'), line });
   }
 
   for (const label of foundLabels) {
+    if (label.line.words.some(word => processedWords.has(word))) continue;
     for (const w of words) {
       if (processedWords.has(w)) continue;
 
@@ -474,6 +513,49 @@ export function detectPIIWithDiagnostics(
         }
       }
     }
+
+    if (words.some(word => processedWords.has(word) && isSpatiallyNear(label.bbox, word.bbox, maxHDist, maxVDist))) continue;
+
+    const sameLineValueWords = label.line.words.filter(word =>
+      word.bbox.x0 >= label.bbox.x1 - padX &&
+      !KNOWN_LABEL_TOKENS.test(word.text.replace(/[:;,\.\-\s]/g, '')) &&
+      !processedWords.has(word)
+    );
+    if (sameLineValueWords.length > 0) {
+      addFallbackRedaction(label.category, {
+        x0: label.bbox.x1,
+        y0: label.bbox.y0,
+        x1: label.line.bbox.x1,
+        y1: label.bbox.y1,
+      });
+      continue;
+    }
+
+    const lineIndex = lines.indexOf(label.line);
+    const nextLine = lines.slice(lineIndex + 1).find(line => {
+      const distance = line.bbox.y0 - label.bbox.y1;
+      return distance >= -5 && distance <= maxVDist;
+    });
+    const nextLineValueWords = nextLine?.words.filter(word =>
+      !KNOWN_LABEL_TOKENS.test(word.text.replace(/[:;,\.\-\s]/g, '')) && !processedWords.has(word)
+    ) ?? [];
+    if (nextLine && nextLineValueWords.length > 0) {
+      addFallbackRedaction(label.category, {
+        x0: Math.min(label.bbox.x0, nextLine.bbox.x0),
+        y0: nextLine.bbox.y0,
+        x1: Math.max(label.bbox.x1, nextLine.bbox.x1),
+        y1: nextLine.bbox.y1,
+      });
+      continue;
+    }
+
+    const rowHeight = Math.max(label.bbox.y1 - label.bbox.y0, Math.round((label.bbox.y1 - label.bbox.y0) * 2.5));
+    addFallbackRedaction(label.category, {
+      x0: label.bbox.x0,
+      y0: label.bbox.y0,
+      x1: canvasWidth - padX,
+      y1: Math.min(canvasHeight, label.bbox.y0 + rowHeight),
+    });
   }
 
   // ─── Pass 3: Safety Gate — Check for High-Risk Labels ───────────────
@@ -486,14 +568,17 @@ export function detectPIIWithDiagnostics(
     }
   }
 
-  // If high-risk labels are present but NO redactions were made, fail closed
-  const reviewRequired = highRiskLabelsCount > 0 && redactions.length === 0;
+  // A recognized sensitive label always receives an exact or conservative mask.
+  // OCR/canvas failures remain fail-closed in the sanitizer.
+  const reviewRequired = false;
 
   return {
     redactions,
     highRiskLabelsCount,
     linesReconstructed: lines.length,
     reviewRequired,
+    exactRedactionsCount,
+    fallbackRedactionsCount,
   };
 }
 

@@ -72,6 +72,7 @@ export default function Home() {
   const floatingPanel=useRef<FloatingHandle>(null);
   const [screenAllowed,setScreenAllowed]=useState(false),[capturing,setCapturing]=useState(false),[captureRetry,setCaptureRetry]=useState(false);
   const capturePending=useRef<AbortController|null>(null),captureLifetime=useRef<AbortController|null>(null);
+  const captureAttemptRef=useRef(0),captureLockRef=useRef(false);
   const session = useRef<string | null>(null);
   const pending = useRef<{ id: string; abort: AbortController } | null>(null);
   const generation = useRef(0); const composer = useRef<HTMLTextAreaElement>(null); const launcher = useRef<HTMLButtonElement>(null);
@@ -211,22 +212,44 @@ export default function Home() {
     finally { setAuthBusy(false); }
   }
   function cancelCapture(){
+    captureAttemptRef.current++;
+    captureLockRef.current = false;
     captureLifetime.current?.abort();captureLifetime.current=null;
     if(capturePending.current){capturePending.current.abort();capturePending.current=null;stop();setCapturing(false);}
   }
   async function captureAndSend(spoken?:{text:string;signal:AbortSignal}):Promise<{answer:Answer;sessionId:string}|undefined>{
-    if(capturePending.current||pending.current||busy||mediaBusy)return;
+    if(captureLockRef.current||capturePending.current||pending.current||busy||mediaBusy)return;
+    captureLockRef.current = true;
+    const attemptId = ++captureAttemptRef.current;
     const controller=new AbortController();capturePending.current=controller;
     captureLifetime.current?.abort();captureLifetime.current=controller;
     const signal=AbortSignal.any([controller.signal,...(spoken?[spoken.signal]:[])]);
     setCapturing(true);setCaptureRetry(true);setError('');setCanRetry(false);
     try{
       const fresh=await contextReview.current!.takeFresh(signal);signal.throwIfAborted();
+      if(attemptId !== captureAttemptRef.current) return;
       const result=await send(spoken,fresh,signal);signal.throwIfAborted();
+      if(attemptId !== captureAttemptRef.current) return;
       if(result&&!spoken)void voice.answer(result,signal);
       return result;
-    }catch(error){if(!signal.aborted){setError(captureWords(interfaceLocale).failed);setCanRetry(true);}}
-    finally{if(capturePending.current===controller){capturePending.current=null;setCapturing(false);}}
+    }catch(error){
+      if(!signal.aborted && attemptId === captureAttemptRef.current){
+        const code = error instanceof RequestError ? error.code : error instanceof Error ? error.message : '';
+        const words = captureWords(interfaceLocale);
+        if (code === 'PRIVACY_SANITIZATION_FAILED' || code === 'PRIVACY_REVIEW_REQUIRED') {
+          setError(words.privacyFailed);
+        } else {
+          setError(prev => prev || words.failed);
+        }
+        setCanRetry(true);
+      }
+    }
+    finally{
+      if(attemptId === captureAttemptRef.current){
+        captureLockRef.current = false;
+        if(capturePending.current===controller){capturePending.current=null;setCapturing(false);}
+      }
+    }
   }
   async function send(spoken?: {text:string;signal:AbortSignal}, approvedSource?:Source, captureSignal?:AbortSignal): Promise<{answer:Answer;sessionId:string}|undefined> {
     if(!approvedSource && contextState.kind==='desktop' && contextState.captureMode==='instant')return captureAndSend(spoken);
@@ -249,6 +272,9 @@ export default function Home() {
       const freshSource = approvedSource || await contextReview.current?.fresh(source) || null;
       const result = await api<Answer>(`/sessions/${id}/turns`, 'POST', { requestId: request.id, question: submittedQuestion, screenOverview, inputLocale, replyLocale, draftLocale: !screenOverview && task === 'draft-text' ? draftLocale : null, taskKind: screenOverview?'general-help':task, inputMode: spoken?'voice':inputMode, source: freshSource, nonSensitiveConfirmed: true }, signal);
       if (generation.current !== marker || result.requestId !== request.id || result.sourceVersion !== (freshSource?.version ?? null)) return;
+      if (freshSource?.approvedImage) {
+        contextReview.current?.commitSent(freshSource);
+      }
       setAnswer(result); setMessages(previous => [...previous, { question: submittedQuestion||captureWords(inputLocale).question, locale: inputLocale, answer: result }].slice(-6)); setQuestion(''); setConsent(false); setInputMode('text'); setStatus(m('Answer ready.')); setExpiresAt(Date.now() + 900_000);
       requestAnimationFrame(() => {
         const log = conversationLog.current, latest = log?.lastElementChild;
@@ -264,7 +290,7 @@ export default function Home() {
       setError(code === 'TRANSLATION_UNAVAILABLE' ? m('Translation is unavailable. Choose English for question, assistance and draft to use image analysis now.') : code === 'SERVICE_UNAVAILABLE' ? m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')
         : ['PROVIDER_BUSY', 'QUOTA_EXCEEDED', 'TURN_IN_PROGRESS'].includes(code) ? m('The service is busy. Your question is kept here. Wait a moment, then choose Retry.')
         : ['CONTEXT_STALE', 'CONTEXT_REVIEW_REQUIRED'].includes(code) ? m('The source needs another review. Your question is kept here.')
-        : code === 'PRIVACY_SANITIZATION_FAILED' ? m('We couldn\'t safely hide sensitive information from this screenshot. Please try again.')
+        : code === 'PRIVACY_SANITIZATION_FAILED' ? captureWords(interfaceLocale).privacyFailed
         : code === 'PRIVACY_REVIEW_REQUIRED' ? t.consentError : t.error);
       setCanRetry(true); setStatus(''); if(spoken)throw err;
     } finally { if (generation.current === marker) { pending.current = null; setBusy(false); } }

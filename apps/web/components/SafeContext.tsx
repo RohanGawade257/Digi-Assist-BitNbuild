@@ -10,7 +10,7 @@ import {captureWords} from '../lib/capture-copy';
 import {captureSource} from '../lib/capture-image';
 
 export type ContextState = { kind: 'none' | 'description' | 'screenshot' | 'desktop'; approved: boolean; captureMode?:'instant'|'review'; captureConsent?:boolean; surface?: string; mode?: Source['contextMode'] };
-export type ReviewHandle = { takeFresh:(signal:AbortSignal)=>Promise<Source>; fresh: (source: Source | null) => Promise<Source | null>; share: () => void; chooseFile: () => void; clear: () => void; approveByVoice: () => Promise<void> };
+export type ReviewHandle = { takeFresh:(signal:AbortSignal)=>Promise<Source>; commitSent: (source: Source) => void; fresh: (source: Source | null) => Promise<Source | null>; share: () => void; chooseFile: () => void; clear: () => void; approveByVoice: () => Promise<void> };
 export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (source: Source | null) => void; onState?: (state: ContextState) => void; resetKey: number; onExplainShare?: () => void; compact?:boolean; question?:string; onApproveAnswer?:(source:Source)=>Promise<void>; onShared?:()=>void; screenAllowed:boolean; screenMessage?:string; busy:boolean; onCapture:()=>void; onRevoke:()=>void; onExplainConsent:()=>void; onExplainPrivacy?: () => void }>(function SafeContext({ t, onChange, onState, resetKey, onExplainShare, compact=false,question='',onApproveAnswer,onShared,screenAllowed,screenMessage,busy,onCapture,onRevoke,onExplainConsent,onExplainPrivacy }, ref) {
   const { m, uiLocale } = useWords();
   const c=captureWords(uiLocale);
@@ -21,6 +21,8 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
   useEffect(()=>{if(!screenAllowed&&screenConsent.current)revoke();},[screenAllowed]); // eslint-disable-line react-hooks/exhaustive-deps
   const w=workspaceWords(uiLocale);const [changed,setChanged]=useState(false),[sending,setSending]=useState(false);
   const [image, setImage] = useState<string | null>(null);
+  const [lastSentScreenshot, setLastSentScreenshot] = useState<string | null>(null);
+  const captureSequenceRef = useRef(0);
   const [lines, setLines] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [target, setTarget] = useState('');
@@ -37,10 +39,10 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
   const [sharing, setSharing] = useState(false), [captureBusy, setCaptureBusy] = useState(false), [region, setRegion] = useState<NonNullable<Source['selectedTarget']>['normalizedRegion']>();
   const labels = lines.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20).map((text, i) => ({ id: `label_${i + 1}`, text }));
   useEffect(() => { onState?.({ kind: sharing ? 'desktop' : image ? 'screenshot' : lines.trim() ? 'description' : 'none', approved: sendMode==='instant'&&sharing?sessionConsent:approved, captureMode:sendMode,captureConsent:sessionConsent, mode: image ? mode : 'reviewed-labels', surface: capture.current?.stream.getVideoTracks()[0]?.getSettings().displaySurface }); }, [sharing, image, lines, approved, mode, onState,sendMode,sessionConsent]);
-  function clear() { stopSharing(); setImage(null); setPrepared(null); setLines(''); setSelected([]); setTarget(''); setRegion(undefined); setError(''); if (fileRef.current) fileRef.current.value = ''; }
+  function clear() { stopSharing(); setImage(null); setLastSentScreenshot(null); setPrepared(null); setLines(''); setSelected([]); setTarget(''); setRegion(undefined); setError(''); if (fileRef.current) fileRef.current.value = ''; }
   function invalidate() { version.current++; setApproved(false); setConsent(false); setImageConsent(false); onChange(null); }
   function revoke(){screenConsent.current=undefined;setSessionConsent(false);onRevoke();invalidate();}
-  function stopSharing() { revoke();sourceId.current=crypto.randomUUID();captureGeneration.current++; captureAbort.current?.abort(); capture.current?.stop(); capture.current = null; frameHash.current = ''; setSharing(false); setChanged(false);setCaptureBusy(false); dirty.current = false; invalidate(); }
+  function stopSharing() { revoke();sourceId.current=crypto.randomUUID();captureGeneration.current++; captureAbort.current?.abort(); capture.current?.stop(); capture.current = null; frameHash.current = ''; setSharing(false); setChanged(false);setCaptureBusy(false); dirty.current = false; setLastSentScreenshot(null); invalidate(); }
   async function snapshot(current = capture.current) {
     if (!current) return;
     const marker = captureGeneration.current;
@@ -62,11 +64,17 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
     const current=capture.current,consent=screenConsent.current,marker=captureGeneration.current;
     if(!current || !consent || !screenAllowed || sendMode!=='instant')throw new Error('CAPTURE_CONSENT_REQUIRED');
     if(fingerprint()!==consentFingerprint.current){revoke();throw new Error('CAPTURE_CONSENT_REQUIRED');}
+    const captureSeq = ++captureSequenceRef.current;
     const source=await captureSource(current,++version.current,consent,signal);
     if(fingerprint()!==consentFingerprint.current){revoke();throw new Error('CAPTURE_CONSENT_REQUIRED');}
-    if(marker!==captureGeneration.current || consent!==screenConsent.current || current!==capture.current)throw new DOMException('Canceled','AbortError');
-    setImage(`data:image/png;base64,${source.approvedImage!.data}`);setPrepared(null);setChanged(false);setError('');
+    if(marker!==captureGeneration.current || consent!==screenConsent.current || current!==capture.current || captureSeq !== captureSequenceRef.current)throw new DOMException('Canceled','AbortError');
+    setPrepared(null);setChanged(false);setError('');
     return source;
+  },commitSent:(source:Source)=>{
+    if(source.approvedImage?.data){
+      setLastSentScreenshot(`data:image/png;base64,${source.approvedImage.data}`);
+      setError('');
+    }
   },share: () => { void share(); }, chooseFile: () => fileRef.current?.click(), clear, approveByVoice: async () => {
     if (!image || mode !== 'approved-image' || !prepared) throw new Error('CONTEXT_REVIEW_REQUIRED');
     setImageConsent(true); if (!await approveImage(true)) throw new Error('CONTEXT_REVIEW_REQUIRED');
@@ -88,7 +96,7 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
   }, [sharing,mode,sendMode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { captureGeneration.current++; captureAbort.current?.abort(); capture.current?.stop(); }, []);
   useEffect(() => () => { if (image) URL.revokeObjectURL(image); }, [image]);
-  useEffect(() => { stopSharing(); setSendMode('instant');setImage(null); setLines(''); setSelected([]); setTarget(''); setRegion(undefined); setConsent(false); setApproved(false); setError(''); version.current++; if (fileRef.current) fileRef.current.value = ''; }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { stopSharing(); setSendMode('instant');setImage(null); setLastSentScreenshot(null); setLines(''); setSelected([]); setTarget(''); setRegion(undefined); setConsent(false); setApproved(false); setError(''); version.current++; if (fileRef.current) fileRef.current.value = ''; }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
   async function upload(file?: File) {
     stopSharing(); setSendMode('review');setImage(null); setLines(''); setSelected([]); setTarget(''); setRegion(undefined); setError('');
     if (!file) return;
@@ -130,14 +138,14 @@ export const SafeContext = forwardRef<ReviewHandle, { t: Catalog; onChange: (sou
     {sendMode==='instant'&&<><h2 id="context-title" tabIndex={-1}>{c.instant}</h2>
       <div className="privacy-trust-bar">
         <span className="privacy-trust-badge" title={m('Sensitive details are processed and masked in your browser before the protected screenshot is sent for AI assistance.')}>
-          🛡️ {busy ? m('Protecting your private information…') : image ? m('Private details protected') : m('Browser Privacy Protected')}
+          🛡️ {busy ? m('Protecting your private information…') : lastSentScreenshot ? m('Private details protected') : m('Browser Privacy Protected')}
         </span>
         {onExplainPrivacy && <button type="button" className="text-button privacy-learn-trigger" onClick={onExplainPrivacy}>{m('How privacy works')}</button>}
       </div>
       {!screenAllowed?<p className="hint">{screenMessage||c.blocked}</p>:sharing&&!sessionConsent?<div className="screen-consent-setup"><label className="check"><input type="checkbox" aria-label={c.consent} checked={sessionConsent} onChange={event=>{if(event.target.checked){consentFingerprint.current=fingerprint();screenConsent.current={mode:'on-demand',sourceId:sourceId.current,grantedAt:new Date().toISOString()};setSessionConsent(true);onExplainConsent();}else revoke();}}/>{c.consent}</label><button type="button" className="text-button" onClick={onExplainConsent}>{c.voice}</button></div>:sessionConsent?<p className="screen-enabled">{c.enabled} <button type="button" className="text-button" onClick={revoke}>{c.revoke}</button></p>:<p className="hint">{c.share}</p>}
       {!sharing&&<button type="button" className="primary share-primary" disabled={captureBusy} onClick={()=>void share()}>{m("Share screen")}</button>}<button type="button" hidden={!sharing} className="primary capture-send" disabled={!sharing||!sessionConsent||!screenAllowed||busy||captureBusy} onClick={onCapture}>{busy?c.processing:c.send}</button>
       {question&&<p className="queued-question" title={question}>{w.question}: {question}</p>}
-      {image&&<details className="capture-thumbnail"><summary>{c.preview}</summary><img className="captured-image-preview" src={image} alt={c.preview}/></details>}
+      {lastSentScreenshot&&<details className="capture-thumbnail"><summary>{c.preview}</summary><img className="captured-image-preview" src={lastSentScreenshot} alt={c.preview}/></details>}
       {sharing&&<button type="button" className="text-button capture-stop" onClick={stopSharing}>{w.stopSharing}</button>}
     </>}
     {compact && sendMode==='review' && <><h2 id="context-title" tabIndex={-1}>{w.review}</h2><p className="snapshot-status" role="status">{changed?w.changed:approved?w.approved:w.needs}</p><p className="queued-question" title={question}>{w.question}: {question||w.noQuestion}</p></>}

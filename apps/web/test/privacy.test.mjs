@@ -261,16 +261,19 @@ test('TEST 19: Spatial proximity — value directly below label', () => {
   assert.equal(redactions[0]?.category, 'cvv');
 });
 
-test('TEST 20: High-risk label safety gate triggers reviewRequired', async () => {
+test('TEST 20: High-risk label with no exact value gets a conservative fallback mask', async () => {
   const { detectPIIWithDiagnostics } = await import('../lib/privacy/detector.ts');
   const words = [
     { text: 'Aadhaar', bbox: { x0: 50, y0: 50, x1: 120, y1: 70 }, confidence: 95 },
     { text: 'Number:', bbox: { x0: 125, y0: 50, x1: 185, y1: 70 }, confidence: 95 },
   ];
   const result = detectPIIWithDiagnostics(words, 800, 600);
-  assert.equal(result.redactions.length, 0);
+  assert.equal(result.redactions.length, 1);
   assert.equal(result.highRiskLabelsCount, 1);
-  assert.equal(result.reviewRequired, true);
+  assert.equal(result.exactRedactionsCount, 0);
+  assert.equal(result.fallbackRedactionsCount, 1);
+  assert.equal(result.redactions[0]?.label, '[AADHAAR PROTECTED]');
+  assert.equal(result.reviewRequired, false);
 });
 
 test('TEST 21: Normal document does NOT trigger safety gate', async () => {
@@ -285,6 +288,54 @@ test('TEST 21: Normal document does NOT trigger safety gate', async () => {
   assert.equal(result.redactions.length, 0);
   assert.equal(result.highRiskLabelsCount, 0);
   assert.equal(result.reviewRequired, false);
+});
+
+test('TEST 23: Aadhaar fallback masks a value on the same row despite wide spacing', async () => {
+  const { detectPIIWithDiagnostics } = await import('../lib/privacy/detector.ts');
+  const result = detectPIIWithDiagnostics([
+    { text: 'Aadhaar', bbox: { x0: 50, y0: 50, x1: 120, y1: 70 }, confidence: 95 },
+    { text: 'Number', bbox: { x0: 125, y0: 50, x1: 185, y1: 70 }, confidence: 95 },
+    { text: 'unreadable', bbox: { x0: 520, y0: 50, x1: 620, y1: 70 }, confidence: 40 },
+  ], 800, 600);
+  assert.equal(result.exactRedactionsCount, 0);
+  assert.equal(result.fallbackRedactionsCount, 1);
+  assert.ok(result.redactions[0]?.x < 200);
+  assert.ok((result.redactions[0]?.x ?? 0) + (result.redactions[0]?.width ?? 0) >= 620);
+});
+
+test('TEST 24: Aadhaar fallback masks the next OCR line', async () => {
+  const { detectPIIWithDiagnostics } = await import('../lib/privacy/detector.ts');
+  const result = detectPIIWithDiagnostics([
+    { text: 'Aadhaar', bbox: { x0: 50, y0: 50, x1: 120, y1: 70 }, confidence: 95 },
+    { text: 'Number', bbox: { x0: 125, y0: 50, x1: 185, y1: 70 }, confidence: 95 },
+    { text: 'unreadable', bbox: { x0: 50, y0: 82, x1: 150, y1: 102 }, confidence: 40 },
+  ], 800, 600);
+  assert.equal(result.fallbackRedactionsCount, 1);
+  assert.ok((result.redactions[0]?.y ?? 0) >= 79);
+  assert.ok((result.redactions[0]?.y ?? 0) + (result.redactions[0]?.height ?? 0) >= 102);
+});
+
+test('TEST 25: Sensitive label without readable value gets a row mask', async () => {
+  const { detectPIIWithDiagnostics } = await import('../lib/privacy/detector.ts');
+  const result = detectPIIWithDiagnostics([
+    { text: 'Aadhaar', bbox: { x0: 50, y0: 50, x1: 120, y1: 70 }, confidence: 95 },
+    { text: 'Number', bbox: { x0: 125, y0: 50, x1: 185, y1: 70 }, confidence: 95 },
+  ], 800, 600);
+  assert.equal(result.fallbackRedactionsCount, 1);
+  assert.ok((result.redactions[0]?.width ?? 0) > 500);
+  assert.ok((result.redactions[0]?.height ?? 0) >= 50);
+});
+
+test('TEST 26: Unrelated privacy text and numbers remain unmasked', async () => {
+  const { detectPIIWithDiagnostics } = await import('../lib/privacy/detector.ts');
+  const result = detectPIIWithDiagnostics([
+    { text: 'Our', bbox: { x0: 50, y0: 50, x1: 80, y1: 70 }, confidence: 95 },
+    { text: 'privacy', bbox: { x0: 85, y0: 50, x1: 145, y1: 70 }, confidence: 95 },
+    { text: 'policy', bbox: { x0: 150, y0: 50, x1: 200, y1: 70 }, confidence: 95 },
+    { text: '2026', bbox: { x0: 210, y0: 50, x1: 250, y1: 70 }, confidence: 95 },
+  ], 800, 600);
+  assert.equal(result.redactions.length, 0);
+  assert.equal(result.highRiskLabelsCount, 0);
 });
 
 test('TEST 22: FULL PRODUCTION TEST — all 8 sensitive values detected simultaneously', () => {
