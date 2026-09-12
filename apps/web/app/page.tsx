@@ -12,6 +12,7 @@ import { AccountTools } from '../components/AccountTools';
 import { FloatingPanel, type FloatingHandle } from '../components/FloatingPanel';
 import { workspaceWords } from '../lib/workspace-copy';
 import {captureWords} from '../lib/capture-copy';
+import { preloadOCR } from '../lib/privacy';
 import { WordsProvider, words } from '../lib/messages';
 import {brand} from '../lib/brand';
 import {BrandMark} from '../components/BrandMark';
@@ -95,6 +96,8 @@ export default function Home() {
     } catch {
       console.warn('[VOICE DIAGNOSTICS] Invalid API base URL:', apiBase);
     }
+    // Pre-initialize OCR engine so first screenshot sanitization is fast
+    preloadOCR();
   }, []);
   useEffect(() => {
     setPrefsReady(false); setCloudAllowed(false); setScreenAllowed(false); setServiceReady(null);
@@ -253,6 +256,7 @@ export default function Home() {
       setError(code === 'TRANSLATION_UNAVAILABLE' ? m('Translation is unavailable. Choose English for question, assistance and draft to use image analysis now.') : code === 'SERVICE_UNAVAILABLE' ? m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')
         : ['PROVIDER_BUSY', 'QUOTA_EXCEEDED', 'TURN_IN_PROGRESS'].includes(code) ? m('The service is busy. Your question is kept here. Wait a moment, then choose Retry.')
         : ['CONTEXT_STALE', 'CONTEXT_REVIEW_REQUIRED'].includes(code) ? m('The source needs another review. Your question is kept here.')
+        : code === 'PRIVACY_SANITIZATION_FAILED' ? m('We couldn\'t safely hide sensitive information from this screenshot. Please try again.')
         : code === 'PRIVACY_REVIEW_REQUIRED' ? t.consentError : t.error);
       setCanRetry(true); setStatus(''); if(spoken)throw err;
     } finally { if (generation.current === marker) { pending.current = null; setBusy(false); } }

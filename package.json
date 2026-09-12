@@ -5,7 +5,7 @@
     "dev": "pnpm --filter @guide/contracts build && pnpm --parallel --filter @guide/api --filter @guide/web dev",
     "build": "pnpm --filter @guide/contracts build && pnpm --filter @guide/api build && pnpm --filter @guide/web build",
     "typecheck": "pnpm --filter @guide/contracts build && pnpm -r typecheck",
-    "test": "pnpm --filter @guide/contracts build && pnpm --filter @guide/api test",
+    "test": "pnpm --filter @guide/contracts build && pnpm --filter @guide/api test && pnpm --filter @guide/web test",
     "test:browser": "playwright test",
     "docs:api": "pnpm --filter @guide/contracts build && node scripts/export-openapi.cjs",
     "check:docs": "node scripts/localize-ui.cjs && node scripts/export-openapi.cjs --check",

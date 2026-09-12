@@ -4,27 +4,46 @@ import { MAX_APPROVED_IMAGE_BYTES, type ApprovedImage } from '@guide/contracts';
 import { useWords } from '../lib/messages';
 import { workspaceWords } from '../lib/workspace-copy';
 import {designWords} from '../lib/design-copy';
+import { sanitizeScreenshot, isSanitized } from '../lib/privacy';
 
 export type PreparedImage = Omit<ApprovedImage, 'analysisConsent'>;
 export function ImageReview({ imageUrl, onEdit, onPrepared, compact=false }: { imageUrl: string; onEdit: () => void; onPrepared: (image: PreparedImage) => void; compact?:boolean }) {
   const { m,uiLocale } = useWords();const w=workspaceWords(uiLocale);const [expanded,setExpanded]=useState(!compact),[editing,setEditing]=useState(!compact);
   const canvas = useRef<HTMLCanvasElement>(null), generation = useRef(0);
   const [preview, setPreview] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const [privacyInfo, setPrivacyInfo] = useState<{ count: number; categories: string[] } | null>(null);
   const [area, setArea] = useState({ x: 0, y: 0, width: 100, height: 100 });
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   async function publish(marker: number) {
     const element = canvas.current!;
-    const blob = await new Promise<Blob>((resolve, reject) => element.toBlob(value => value ? resolve(value) : reject(new Error()), 'image/png'));
+    // Step 1: Export raw canvas to blob
+    const rawBlob = await new Promise<Blob>((resolve, reject) => element.toBlob(value => value ? resolve(value) : reject(new Error()), 'image/png'));
+
+    // ─── PRIVACY FIREWALL: sanitize BEFORE creating the upload payload ───
+    console.info('[PRIVACY] Sanitizing reviewed image…');
+    const sanitizationResult = await sanitizeScreenshot(rawBlob);
+    if (marker !== generation.current) return;
+
+    if (!isSanitized(sanitizationResult)) {
+      // FAIL CLOSED: do NOT prepare the raw image for upload
+      console.error('[PRIVACY] Sanitization failed — blocking image preparation');
+      throw new Error('PRIVACY_SANITIZATION_FAILED');
+    }
+
+    setPrivacyInfo(sanitizationResult.redactionCount > 0 ? { count: sanitizationResult.redactionCount, categories: sanitizationResult.categories } : null);
+
+    // Use the sanitized blob
+    const blob = sanitizationResult.blob;
     if (blob.size > MAX_APPROVED_IMAGE_BYTES) throw new Error();
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const sha = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     if (marker !== generation.current) return;
     let binary = ''; for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
     const data = btoa(binary); setPreview(`data:image/png;base64,${data}`);
-    onPrepared({ mimeType: 'image/png', data, width: element.width, height: element.height, sha256: Array.from(sha, value => value.toString(16).padStart(2, '0')).join('') });
+    onPrepared({ mimeType: 'image/png', data, width: sanitizationResult.width, height: sanitizationResult.height, sha256: Array.from(sha, value => value.toString(16).padStart(2, '0')).join('') });
   }
   async function reset() {
-    const marker = ++generation.current; onEdit(); setPreview(''); setBusy(true); setError('');
+    const marker = ++generation.current; onEdit(); setPreview(''); setBusy(true); setError(''); setPrivacyInfo(null);
     try {
       const image = new Image(); image.src = imageUrl; await image.decode();
       if (marker !== generation.current) return;
@@ -69,6 +88,6 @@ export function ImageReview({ imageUrl, onEdit, onPrepared, compact=false }: { i
     </div>}
     <div hidden={!editing}><fieldset disabled={busy}><legend>{m('Area to crop or mask (percent)')}</legend><div className="image-coordinates">{(['x', 'y', 'width', 'height'] as const).map(key => <label key={key}>{key === 'x' ? m('Left') : key === 'y' ? m('Top') : key === 'width' ? m('Width') : m('Height')}<input type="number" min={key === 'x' || key === 'y' ? 0 : 1} max={100} step="1" value={Math.round(area[key] * 100) / 100} onChange={event => select({ ...area, [key]: Math.max(0, Math.min(100, Number(event.target.value))) })}/></label>)}</div></fieldset>
     <div className="actions"><button type="button" className="secondary" disabled={busy || !preview} onClick={() => void edit('crop')}>{m('Crop to area')}</button><button type="button" className="secondary" disabled={busy || !preview} onClick={() => void edit('mask')}>{m('Mask area')}</button><button type="button" className="text-button" disabled={busy} onClick={() => void reset()}>{m('Reset image edits')}</button></div>
-    </div>{busy && <p role="status">{m('Preparing image locally...')}</p>}{error && <p role="alert">{error}</p>}
+    </div>{busy && <p role="status" className="privacy-processing">{m('Protecting your private information…')}</p>}{privacyInfo && <p role="status" className="privacy-status">🛡️ {privacyInfo.count} {m('private detail(s) protected')}</p>}{error && <p role="alert">{error}</p>}
   </div>;
 }
