@@ -2,7 +2,7 @@
 import { GlassSurface } from './Glass';
 import { useWords } from '../lib/messages';
 
-export function HowItWorks({ onStartVoice }: { onStartVoice?: () => void }) {
+export function HowItWorks() {
   const { m } = useWords();
 
   const steps = [
@@ -39,7 +39,7 @@ export function HowItWorks({ onStartVoice }: { onStartVoice?: () => void }) {
   ];
 
   return (
-    <section className="how-it-works-section" id="how-it-works" aria-labelledby="how-heading">
+    <section className="how-it-works-section section-gap" id="how-it-works" aria-labelledby="how-heading">
       <div className="section-header text-center">
         <span className="eyebrow">{m('SIMPLE 5-STEP JOURNEY')}</span>
         <h2 id="how-heading">{m('How VaaniSetu Works')}</h2>
@@ -48,31 +48,22 @@ export function HowItWorks({ onStartVoice }: { onStartVoice?: () => void }) {
         </p>
       </div>
 
-      <div className="stepper-track">
-        {steps.map((step, idx) => (
-          <GlassSurface key={step.num} className="step-card" as="div">
-            <div className="step-badge-row">
-              <span className="step-number">{step.num}</span>
-              <span className="step-icon" aria-hidden="true">{step.icon}</span>
-            </div>
-            <h3 className="step-title">{step.title}</h3>
-            <p className="step-desc">{step.desc}</p>
-            {idx < steps.length - 1 && (
-              <div className="step-connector" aria-hidden="true">
-                <span className="connector-dot" />
+      {/* Connected Timeline Track */}
+      <div className="timeline-container">
+        <div className="timeline-progress-bar" aria-hidden="true" />
+        <div className="timeline-steps">
+          {steps.map((step) => (
+            <GlassSurface key={step.num} className="timeline-step-node" as="div">
+              <div className="step-badge-circle">
+                <span className="step-icon" aria-hidden="true">{step.icon}</span>
+                <span className="step-num">{step.num}</span>
               </div>
-            )}
-          </GlassSurface>
-        ))}
-      </div>
-
-      {onStartVoice && (
-        <div className="how-it-works-action">
-          <button type="button" className="primary start-voice-btn" onClick={onStartVoice}>
-            🎙️ {m('Try Speaking to VaaniSetu')} →
-          </button>
+              <h3 className="step-title">{step.title}</h3>
+              <p className="step-desc">{step.desc}</p>
+            </GlassSurface>
+          ))}
         </div>
-      )}
+      </div>
     </section>
   );
 }

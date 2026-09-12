@@ -25,6 +25,9 @@ import { useVoiceAssistant } from '../lib/use-voice-assistant';
 import voiceCopy from '../lib/voice-copy.json';
 import { WhyVaaniSetu } from '../components/WhyVaaniSetu';
 import { HowItWorks } from '../components/HowItWorks';
+import { PrivacyShowcase } from '../components/PrivacyShowcase';
+import { TrustStrip } from '../components/TrustStrip';
+import { FinalCTA } from '../components/FinalCTA';
 import { PrivacyExplainerModal } from '../components/PrivacyExplainerModal';
 import { HelpGuide } from '../components/HelpGuide';
 
@@ -301,75 +304,447 @@ export default function Home() {
 </Dialog>
     <Dialog open={secondary!==null} title={secondary?d[secondary]:d.help} closeLabel={d.close} onClose={()=>setSecondary(null)}>{secondary==='help'?<HelpGuide locale={interfaceLocale} onOpenPrivacy={()=>{setSecondary(null);setPrivacyModalOpen(true);}}/>:user&&secondary&&<AccountTools mode={secondary} sessionId={session.current} locale={interfaceLocale} onDeleted={()=>{setSecondary(null);void end();}}/>}</Dialog>
     <main id="main">
-      {!onboarded ? <div className="onboarding">
-        <section className="intro">
-          <span className="eyebrow">{m('YOUR LANGUAGE. YOUR PACE.')}</span>
-          <h1>{d.hero}</h1>
-          <p className="hero-core-statement">{m('Digital services should understand you.')}</p>
-          <p className="lead">{m("Speak in your language, show VaaniSetu where you're stuck, and receive simple step-by-step guidance — with privacy protection built into the screenshot workflow.")}</p>
-          <div className="hero-actions">
-            <button type="button" className="primary hero-primary-cta" onClick={() => { setOnboarded(true); setStatus(''); focusComposer(); }}>
-              🎙️ {m('Start Voice Assistant')}
-            </button>
-            <a href="#how-it-works" className="secondary hero-secondary-cta">
-              {m('See how it works')} ↓
-            </a>
+      {!onboarded ? (
+        <>
+          <div className="onboarding">
+            <section className="intro">
+              <span className="eyebrow">{m('YOUR LANGUAGE. YOUR PACE.')}</span>
+              <h1>
+                <span>{m('A little guidance.')}</span>
+                <br />
+                <span>{m('A lot more confidence.')}</span>
+              </h1>
+              <p className="hero-core-statement">{m('Digital services should understand you.')}</p>
+              <p className="lead">{m("Speak in your language, show where you're stuck, and get simple step-by-step guidance.")}</p>
+              <div className="hero-actions">
+                <button type="button" className="primary hero-primary-cta" onClick={() => { setOnboarded(true); setStatus(''); focusComposer(); }}>
+                  🎙️ {m('Start Voice Assistant')}
+                </button>
+                <a href="#how-it-works" className="secondary hero-secondary-cta">
+                  {m('See how it works')} ↓
+                </a>
+              </div>
+              <div className="hero-trust-line" role="note" aria-label={m('Ways to start')}>
+                <span>{m('Voice-first')}</span>
+                <span className="dot" aria-hidden="true">•</span>
+                <span>{m('Multilingual')}</span>
+                <span className="dot" aria-hidden="true">•</span>
+                <span>{m('Step-by-step')}</span>
+                <span className="dot" aria-hidden="true">•</span>
+                <span>{m('Privacy-aware')}</span>
+              </div>
+            </section>
+            <GlassSurface as="section" className="card language-card" id="language-selection">
+              <h2>{t.choose}</h2>
+              <div className="language-grid" role="radiogroup" aria-label={t.choose}>
+                {locales.map(locale => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={replyLocale === locale}
+                    className={replyLocale === locale ? 'language selected' : 'language'}
+                    key={locale}
+                    lang={locale}
+                    onClick={() => activateLanguage(locale)}
+                    onKeyDown={event => {
+                      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+                        event.preventDefault();
+                        const choices = Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('button'));
+                        const index = choices.indexOf(event.currentTarget);
+                        choices[(index + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : choices.length - 1)) % choices.length]?.focus();
+                      }
+                    }}
+                  >
+                    {languageNames[locale]}
+                  </button>
+                ))}
+              </div>
+              <p className="hint" lang={replyLocale}>{voiceCopy[replyLocale].consent}</p>
+              <button type="button" className="primary wide" onClick={() => { setOnboarded(true); setStatus(''); }}>
+                {t.continue}<span aria-hidden="true"> →</span>
+              </button>
+              <p className="hint">{m('You can change these choices at any time. A microphone is never required.')}</p>
+            </GlassSurface>
           </div>
-          <div className="hero-trust-strip" role="note" aria-label={m('Ways to start')}>
-            <span>🎙️ {m('Voice-first')}</span>
-            <span className="dot" aria-hidden="true">•</span>
-            <span>🌐 {m('Multilingual')}</span>
-            <span className="dot" aria-hidden="true">•</span>
-            <span>👣 {m('Step-by-step')}</span>
-            <span className="dot" aria-hidden="true">•</span>
-            <span>🛡️ {m('Privacy-aware')}</span>
-          </div>
-          <AssistantVisual/>
-          <p className="boundary">{m('You stay in control. You make the clicks, check your details, and decide what to send.')}</p>
-        </section>
-        <GlassSurface as="section" className="card language-card"><h2>{t.choose}</h2><div className="language-grid" role="radiogroup" aria-label={t.choose}>{locales.map(locale=><button type="button" role="radio" aria-checked={replyLocale===locale} className={replyLocale===locale?'language selected':'language'} key={locale} lang={locale} onClick={()=>activateLanguage(locale)} onKeyDown={event=>{if(['ArrowRight','ArrowLeft','ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();const choices=Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>('button'));const index=choices.indexOf(event.currentTarget);choices[(index+(['ArrowRight','ArrowDown'].includes(event.key)?1:choices.length-1))%choices.length]?.focus();}}}>{languageNames[locale]}</button>)}</div><p className="hint" lang={replyLocale}>{voiceCopy[replyLocale].consent}</p><button type="button" className="primary wide" onClick={() => { setOnboarded(true); setStatus(''); }}>{t.continue}<span aria-hidden="true"> →</span></button><p className="hint">{m('You can change these choices at any time. A microphone is never required.')}</p></GlassSurface>
-      </div> : <div className={`journey ${ended?'session-ended':''}`}>
-        <div className="journey-heading"><div><span className="eyebrow">{m('YOUR SPACE')}</span><h1>{ended?m('Assistance ended'):d.welcome}</h1><p>{ended?m('Screen sharing and recording have stopped. Start a new question whenever you are ready.'):d.choose}</p></div>{ended&&<div className="actions"><button type="button" className="primary" onClick={()=>{setEnded(false);setStarted(false);focusComposer();}}>{d.again}</button>{user&&<button type="button" className="text-button" onClick={()=>setSecondary('feedback')}>{d.feedback}</button>}</div>}</div>
-        <section className="start-disclosure" hidden={ended || contextState.kind!=='none'}><div className="start-options" aria-label={m('Ways to start')}>
-          <button type="button" className="start-option" onClick={() => chooseStart('screen')}><strong>{m('Share screen')}</strong><span>{m('Choose a tab or window in a supported desktop browser.')}</span></button>
-          <button type="button" className="start-option" onClick={() => chooseStart('image')}><strong>{m('Upload screenshot')}</strong><span>{m('Choose an image to preview and review before AI analysis.')}</span></button>
-          <button type="button" className="start-option" onClick={() => chooseStart('text')}><strong>{m('Ask a question')}</strong><span>{m('Type or speak. No screen is required.')}</span></button>
-        </div></section>
-        <div className="journey-grid" hidden={ended}>
-          <div className="conversation-column">
-            {serviceReady === false && <p className="notice">{m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')}</p>}
-            <FloatingPanel ref={floatingPanel} review={<SafeContext ref={contextReview} compact question={question} onApproveAnswer={async approved=>{const result=await send(undefined,approved);if(result)await voice.answer(result);}} screenAllowed={screenAllowed} screenMessage={!user?m('Sign in before sending. Your question stays here.'):!verified?t.verify:serviceReady===null?t.working:serviceReady===false?m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.'):undefined} busy={capturing||busy} onCapture={()=>void captureAndSend()} onRevoke={cancelCapture} onExplainConsent={()=>{void voice.explainConsent();}} onShared={()=>floatingPanel.current?.afterShare()} onExplainShare={()=>{void voice.explainConsent('share');}} onExplainPrivacy={()=>setPrivacyModalOpen(true)} t={t} onChange={changeSource} onState={setContextState} resetKey={resetKey}/>} needsReview={contextState.kind!=='none'&&!contextState.approved} question={question} error={error} caption={voice.caption} recovery={captureRetry&&canRetry?<button type="button" className="secondary" disabled={capturing||busy} onClick={()=>void captureAndSend()}>{captureWords(interfaceLocale).retry}</button>:null} ended={ended} onStopSpeaking={voice.stopSpeaking} voiceState={voice.state} onPause={()=>{if(['idle','paused','error'].includes(voice.state))void voice.resume();else voice.pause();}} onEnd={()=>void end()} sourceStatus={sourceName} onShare={()=>chooseStart('screen')} onCloseChat={()=>setOpen(false)} controls={<><button type="button" ref={launcher} className="secondary" aria-expanded={open} aria-controls="chat"  onClick={focusComposer}>{t.open}</button><label className="check"><input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)}/>{t.pin}</label></>} open={open} highContrast={opaque} locale={interfaceLocale} large={large} onOpen={() => setOpen(true)} onClosedReturn={()=>{}}>
-              <section className="card chat" id="chat" hidden={!open} aria-labelledby="chat-title" onKeyDown={e => { if (e.key === 'Escape' && !e.nativeEvent.isComposing) { e.preventDefault(); closeChat(); } }}>
-                <div className="section-heading"><h2 id="chat-title">{m('Your conversation')}</h2><button className="text-button" type="button" onClick={closeChat}>{t.close}</button></div>
-                <VoiceAssistant voice={voice} locale={replyLocale} onEnd={()=>void end()}/><div className="conversation-log" ref={conversationLog} tabIndex={messages.length ? 0 : undefined} role="region" aria-label={m('Conversation messages')}>
-                  {!messages.length && <div className="empty-conversation"><p>{m('Ask one question at a time. I can explain an instruction or help prepare a draft. You decide what to do.')}</p><details className="examples"><summary>{m('Try an example')}</summary><div className="example-list"><button type="button" className="example" onClick={() => example('general-help', 'Help me understand a form.')}>{m('Understand a form')}</button><button type="button" className="example" onClick={() => example('guide-task', 'Help me find a feature on a website.')}>{m('Find a website feature')}</button><button type="button" className="example" onClick={() => example('draft-text', 'Draft an email asking for public instructions.')}>{m('Draft an email')}</button></div></details></div>}
-                  {messages.map((item, index) => <article key={item.answer.requestId} className="conversation-turn"><p className="question-bubble" lang={item.locale} dir={item.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.question}</p><div className="answer">{item.interrupted&&<p role="status">{workspaceWords(interfaceLocale).interrupted}</p>}<h3>{item.answer.status === 'answer' ? m('One step to try') : m('More information is needed')}</h3><p lang={item.answer.explanation.locale} dir={item.answer.explanation.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.answer.explanation.text}</p>{item.answer.referencedLabels.length > 0 && <ul>{item.answer.referencedLabels.map(label => <li key={label.id}><bdi>{label.text}</bdi></li>)}</ul>}{item.answer.draft && <><h3>{t.draft}</h3><pre lang={item.answer.draft.locale} dir={item.answer.draft.locale === 'ur-IN' ? 'rtl' : 'ltr'}>{item.answer.draft.text}</pre><button type="button" className="secondary" onClick={() => { void navigator.clipboard.writeText(item.answer.draft!.text).then(() => setStatus(t.copied)).catch(() => setError(t.error)); }}>{t.copy}</button></>}<p className="hint">{item.answer.evidence.some(e => e.kind === 'approved-image') && m('This answer uses your approved image snapshot, not a live screen.')}{' '}{m('No external action has been performed.')}{' '}{item.answer.sourceVersion !== null && m('Review your current screen before following earlier guidance.')}</p>
-                    {index === messages.length - 1 && <>{item.answer.status === 'answer' && <button type="button" className="secondary" disabled={busy || Boolean(question.trim())} onClick={() => { setQuestion(words(inputLocale)('I have done the previous step. What should I do next?')); setConsent(false); setStatus(m('Review this follow-up, then send it when ready.')); focusComposer(); }}>{m('I’ve done this')}</button>}{session.current && <AnswerAudio answer={item.answer} sessionId={session.current} enabled={audio && !reader && open && !voice.active} rate={rate} onEnable={reader ? undefined : () => setAudio(true)}/>}</>}
-                  </div></article>)}
-                </div>
-                <form className="composer" onSubmit={e => { e.preventDefault(); void send(); }}>
-                  <label htmlFor="question">{t.question}</label><textarea ref={composer} id="question" rows={3} maxLength={2000} value={question} lang={inputLocale} dir={inputLocale === 'ur-IN' ? 'rtl' : 'ltr'} aria-describedby="composer-help privacy-help" enterKeyHint="send" onChange={e => { if(voice.active)voice.pause(); if(capturePending.current)cancelCapture();else if (pending.current) stop(); setInputMode('text'); setQuestion(e.target.value); setConsent(false); setCanRetry(false); setError(''); }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) { e.preventDefault(); if (!e.repeat) void send(); } }}/>
-                  <div className="composer-hints" id="composer-help"><span>{m('Enter: send · Shift+Enter: new line')}</span><span>{question.length}/2000</span></div>
-                  <label className="check" id="privacy-help"><input ref={consentInput} type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}/>{t.safe}</label>
-                  {!user ? <p className="hint">{m('Sign in before sending. Your question stays here.')}</p> : !verified ? <p className="hint">{t.verify}</p> : null}
-                  <div className="actions"><button type="submit" className="primary" disabled={busy || mediaBusy}>{busy ? t.working : t.send}</button>{busy && <button type="button" className="stop" onClick={stop}>{t.stop}</button>}{canRetry && <button type="button" className="secondary" disabled={busy || mediaBusy} onClick={()=>{if(captureRetry)void captureAndSend();else void send();}}>{captureRetry?captureWords(interfaceLocale).retry:source?.approvedImage?captureWords(interfaceLocale).reviewRetry:m('Retry')}</button>}</div>
-                  <div className="status-area"><p role="status" aria-live="polite" aria-atomic="true">{status}</p>{error && <p className="error" role="alert">{error}</p>}</div>
-                </form>
-                <details className="task-options"><summary>{m('Question and draft languages')}</summary><fieldset className="task-grid"><legend>{t.task}</legend>{(['general-help', 'guide-task', 'draft-text'] as const).map(kind => <label className={task === kind ? 'task selected' : 'task'} key={kind}><input type="radio" name="task" checked={task === kind} onChange={() => { if (pending.current) stop(); setTask(kind); }}/><strong>{kind === 'general-help' ? t.general : kind === 'guide-task' ? t.guide : t.emailTask}</strong></label>)}</fieldset><div className="two-columns"><LanguageSelect label={t.input} value={inputLocale} onChange={locale => { if (pending.current) stop(); setInputLocale(locale); }}/><LanguageSelect label={t.draft} value={draftLocale} empty onChange={locale => { if (pending.current) stop(); setDraftLocale(locale); }}/></div></details>
-                <VoiceInput allowed={Boolean(user && verified && !busy && open && !voice.active)} cloudAllowed={cloudAllowed} locale={inputLocale} ensureSession={ensureSession} onBusy={setMediaBusy} resetKey={resetKey + voiceEpoch} onTranscript={text => { stop(); setInputMode('voice'); setQuestion(previous => previous.trim() ? (previous + '\n' + text).slice(0, 2000) : text); setConsent(false); setStatus(m('Review and correct the transcript, then confirm it is safe before sending.')); focusComposer(); }}/>
-              </section>
-            </FloatingPanel>
-            {idleWarning && <p className="notice" role="status">{m('This session expires after 15 minutes without an answer. Your typed draft stays here; sending after expiry starts a new session.')}</p>}
 
+          <TrustStrip />
+          <WhyVaaniSetu />
+          <PrivacyShowcase onOpenPrivacy={() => setPrivacyModalOpen(true)} />
+          <HowItWorks />
+          <FinalCTA
+            onStartVoice={() => { setOnboarded(true); setStatus(''); focusComposer(); }}
+            onChooseLanguage={() => {
+              document.getElementById('language-selection')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
+        </>
+      ) : (
+        <div className={`journey ${ended ? 'session-ended' : ''}`}>
+          <div className="journey-heading">
+            <div>
+              <span className="eyebrow">{m('YOUR SPACE')}</span>
+              <h1>{ended ? m('Assistance ended') : d.welcome}</h1>
+              <p>{ended ? m('Screen sharing and recording have stopped. Start a new question whenever you are ready.') : d.choose}</p>
+            </div>
+            {ended && (
+              <div className="actions">
+                <button type="button" className="primary" onClick={() => { setEnded(false); setStarted(false); focusComposer(); }}>
+                  {d.again}
+                </button>
+                {user && (
+                  <button type="button" className="text-button" onClick={() => setSecondary('feedback')}>
+                    {d.feedback}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-
+          <section className="start-disclosure" hidden={ended || contextState.kind !== 'none'}>
+            <div className="start-options" aria-label={m('Ways to start')}>
+              <button type="button" className="start-option" onClick={() => chooseStart('screen')}>
+                <strong>{m('Share screen')}</strong>
+                <span>{m('Choose a tab or window in a supported desktop browser.')}</span>
+              </button>
+              <button type="button" className="start-option" onClick={() => chooseStart('image')}>
+                <strong>{m('Upload screenshot')}</strong>
+                <span>{m('Choose an image to preview and review before AI analysis.')}</span>
+              </button>
+              <button type="button" className="start-option" onClick={() => chooseStart('text')}>
+                <strong>{m('Ask a question')}</strong>
+                <span>{m('Type or speak. No screen is required.')}</span>
+              </button>
+            </div>
+          </section>
+          <div className="journey-grid" hidden={ended}>
+            <div className="conversation-column">
+              {serviceReady === false && (
+                <p className="notice">
+                  {m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')}
+                </p>
+              )}
+              <FloatingPanel
+                ref={floatingPanel}
+                review={
+                  <SafeContext
+                    ref={contextReview}
+                    compact
+                    question={question}
+                    onApproveAnswer={async approved => {
+                      const result = await send(undefined, approved);
+                      if (result) await voice.answer(result);
+                    }}
+                    screenAllowed={screenAllowed}
+                    screenMessage={
+                      !user
+                        ? m('Sign in before sending. Your question stays here.')
+                        : !verified
+                        ? t.verify
+                        : serviceReady === null
+                        ? t.working
+                        : serviceReady === false
+                        ? m('Assistance is temporarily unavailable. Your question is kept here. Try again later or contact the site owner.')
+                        : undefined
+                    }
+                    busy={capturing || busy}
+                    onCapture={() => void captureAndSend()}
+                    onRevoke={cancelCapture}
+                    onExplainConsent={() => { void voice.explainConsent(); }}
+                    onShared={() => floatingPanel.current?.afterShare()}
+                    onExplainShare={() => { void voice.explainConsent('share'); }}
+                    onExplainPrivacy={() => setPrivacyModalOpen(true)}
+                    t={t}
+                    onChange={changeSource}
+                    onState={setContextState}
+                    resetKey={resetKey}
+                  />
+                }
+                needsReview={contextState.kind !== 'none' && !contextState.approved}
+                question={question}
+                error={error}
+                caption={voice.caption}
+                recovery={
+                  captureRetry && canRetry ? (
+                    <button type="button" className="secondary" disabled={capturing || busy} onClick={() => void captureAndSend()}>
+                      {captureWords(interfaceLocale).retry}
+                    </button>
+                  ) : null
+                }
+                ended={ended}
+                onStopSpeaking={voice.stopSpeaking}
+                voiceState={voice.state}
+                onPause={() => {
+                  if (['idle', 'paused', 'error'].includes(voice.state)) void voice.resume();
+                  else voice.pause();
+                }}
+                onEnd={() => void end()}
+                sourceStatus={sourceName}
+                onShare={() => chooseStart('screen')}
+                onCloseChat={() => setOpen(false)}
+                controls={
+                  <>
+                    <button type="button" ref={launcher} className="secondary" aria-expanded={open} aria-controls="chat" onClick={focusComposer}>
+                      {t.open}
+                    </button>
+                    <label className="check">
+                      <input type="checkbox" checked={pinned} onChange={e => setPinned(e.target.checked)} />
+                      {t.pin}
+                    </label>
+                  </>
+                }
+                open={open}
+                highContrast={opaque}
+                locale={interfaceLocale}
+                large={large}
+                onOpen={() => setOpen(true)}
+                onClosedReturn={() => {}}
+              >
+                <section
+                  className="card chat"
+                  id="chat"
+                  hidden={!open}
+                  aria-labelledby="chat-title"
+                  onKeyDown={e => {
+                    if (e.key === 'Escape' && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      closeChat();
+                    }
+                  }}
+                >
+                  <div className="section-heading">
+                    <h2 id="chat-title">{m('Your conversation')}</h2>
+                    <button className="text-button" type="button" onClick={closeChat}>
+                      {t.close}
+                    </button>
+                  </div>
+                  <VoiceAssistant voice={voice} locale={replyLocale} onEnd={() => void end()} />
+                  <div className="conversation-log" ref={conversationLog} tabIndex={messages.length ? 0 : undefined} role="region" aria-label={m('Conversation messages')}>
+                    {!messages.length && (
+                      <div className="empty-conversation">
+                        <p>{m('Ask one question at a time. I can explain an instruction or help prepare a draft. You decide what to do.')}</p>
+                        <details className="examples">
+                          <summary>{m('Try an example')}</summary>
+                          <div className="example-list">
+                            <button type="button" className="example" onClick={() => example('general-help', 'Help me understand a form.')}>
+                              {m('Understand a form')}
+                            </button>
+                            <button type="button" className="example" onClick={() => example('guide-task', 'Help me find a feature on a website.')}>
+                              {m('Find a website feature')}
+                            </button>
+                            <button type="button" className="example" onClick={() => example('draft-text', 'Draft an email asking for public instructions.')}>
+                              {m('Draft an email')}
+                            </button>
+                          </div>
+                        </details>
+                      </div>
+                    )}
+                    {messages.map((item, index) => (
+                      <article key={item.answer.requestId} className="conversation-turn">
+                        <p className="question-bubble" lang={item.locale} dir={item.locale === 'ur-IN' ? 'rtl' : 'ltr'}>
+                          {item.question}
+                        </p>
+                        <div className="answer">
+                          {item.interrupted && <p role="status">{workspaceWords(interfaceLocale).interrupted}</p>}
+                          <h3>{item.answer.status === 'answer' ? m('One step to try') : m('More information is needed')}</h3>
+                          <p lang={item.answer.explanation.locale} dir={item.answer.explanation.locale === 'ur-IN' ? 'rtl' : 'ltr'}>
+                            {item.answer.explanation.text}
+                          </p>
+                          {item.answer.referencedLabels.length > 0 && (
+                            <ul>
+                              {item.answer.referencedLabels.map(label => (
+                                <li key={label.id}>
+                                  <bdi>{label.text}</bdi>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {item.answer.draft && (
+                            <>
+                              <h3>{t.draft}</h3>
+                              <pre lang={item.answer.draft.locale} dir={item.answer.draft.locale === 'ur-IN' ? 'rtl' : 'ltr'}>
+                                {item.answer.draft.text}
+                              </pre>
+                              <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => {
+                                  void navigator.clipboard.writeText(item.answer.draft!.text).then(() => setStatus(t.copied)).catch(() => setError(t.error));
+                                }}
+                              >
+                                {t.copy}
+                              </button>
+                            </>
+                          )}
+                          <p className="hint">
+                            {item.answer.evidence.some(e => e.kind === 'approved-image') && m('This answer uses your approved image snapshot, not a live screen.')}{' '}
+                            {m('No external action has been performed.')}{' '}
+                            {item.answer.sourceVersion !== null && m('Review your current screen before following earlier guidance.')}
+                          </p>
+                          {index === messages.length - 1 && (
+                            <>
+                              {item.answer.status === 'answer' && (
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  disabled={busy || Boolean(question.trim())}
+                                  onClick={() => {
+                                    setQuestion(words(inputLocale)('I have done the previous step. What should I do next?'));
+                                    setConsent(false);
+                                    setStatus(m('Review this follow-up, then send it when ready.'));
+                                    focusComposer();
+                                  }}
+                                >
+                                  {m('I’ve done this')}
+                                </button>
+                              )}
+                              {session.current && (
+                                <AnswerAudio
+                                  answer={item.answer}
+                                  sessionId={session.current}
+                                  enabled={audio && !reader && open && !voice.active}
+                                  rate={rate}
+                                  onEnable={reader ? undefined : () => setAudio(true)}
+                                />
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  <form className="composer" onSubmit={e => { e.preventDefault(); void send(); }}>
+                    <label htmlFor="question">{t.question}</label>
+                    <textarea
+                      ref={composer}
+                      id="question"
+                      rows={3}
+                      maxLength={2000}
+                      value={question}
+                      lang={inputLocale}
+                      dir={inputLocale === 'ur-IN' ? 'rtl' : 'ltr'}
+                      aria-describedby="composer-help privacy-help"
+                      enterKeyHint="send"
+                      onChange={e => {
+                        if (voice.active) voice.pause();
+                        if (capturePending.current) cancelCapture();
+                        else if (pending.current) stop();
+                        setInputMode('text');
+                        setQuestion(e.target.value);
+                        setConsent(false);
+                        setCanRetry(false);
+                        setError('');
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
+                          e.preventDefault();
+                          if (!e.repeat) void send();
+                        }
+                      }}
+                    />
+                    <div className="composer-hints" id="composer-help">
+                      <span>{m('Enter: send · Shift+Enter: new line')}</span>
+                      <span>{question.length}/2000</span>
+                    </div>
+                    <label className="check" id="privacy-help">
+                      <input ref={consentInput} type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
+                      {t.safe}
+                    </label>
+                    {!user ? <p className="hint">{m('Sign in before sending. Your question stays here.')}</p> : !verified ? <p className="hint">{t.verify}</p> : null}
+                    <div className="actions">
+                      <button type="submit" className="primary" disabled={busy || mediaBusy}>
+                        {busy ? t.working : t.send}
+                      </button>
+                      {busy && (
+                        <button type="button" className="stop" onClick={stop}>
+                          {t.stop}
+                        </button>
+                      )}
+                      {canRetry && (
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={busy || mediaBusy}
+                          onClick={() => {
+                            if (captureRetry) void captureAndSend();
+                            else void send();
+                          }}
+                        >
+                          {captureRetry ? captureWords(interfaceLocale).retry : source?.approvedImage ? captureWords(interfaceLocale).reviewRetry : m('Retry')}
+                        </button>
+                      )}
+                    </div>
+                    <div className="status-area">
+                      <p role="status" aria-live="polite" aria-atomic="true">{status}</p>
+                      {error && <p className="error" role="alert">{error}</p>}
+                    </div>
+                  </form>
+                  <details className="task-options">
+                    <summary>{m('Question and draft languages')}</summary>
+                    <fieldset className="task-grid">
+                      <legend>{t.task}</legend>
+                      {(['general-help', 'guide-task', 'draft-text'] as const).map(kind => (
+                        <label className={task === kind ? 'task selected' : 'task'} key={kind}>
+                          <input
+                            type="radio"
+                            name="task"
+                            checked={task === kind}
+                            onChange={() => {
+                              if (pending.current) stop();
+                              setTask(kind);
+                            }}
+                          />
+                          <strong>{kind === 'general-help' ? t.general : kind === 'guide-task' ? t.guide : t.emailTask}</strong>
+                        </label>
+                      ))}
+                    </fieldset>
+                    <div className="two-columns">
+                      <LanguageSelect label={t.input} value={inputLocale} onChange={locale => { if (pending.current) stop(); setInputLocale(locale); }} />
+                      <LanguageSelect label={t.draft} value={draftLocale} empty onChange={locale => { if (pending.current) stop(); setDraftLocale(locale); }} />
+                    </div>
+                  </details>
+                  <VoiceInput
+                    allowed={Boolean(user && verified && !busy && open && !voice.active)}
+                    cloudAllowed={cloudAllowed}
+                    locale={inputLocale}
+                    ensureSession={ensureSession}
+                    onBusy={setMediaBusy}
+                    resetKey={resetKey + voiceEpoch}
+                    onTranscript={text => {
+                      stop();
+                      setInputMode('voice');
+                      setQuestion(previous => (previous.trim() ? previous + '\n' + text : text).slice(0, 2000));
+                      setConsent(false);
+                      setStatus(m('Review and correct the transcript, then confirm it is safe before sending.'));
+                      focusComposer();
+                    }}
+                  />
+                </section>
+              </FloatingPanel>
+              {idleWarning && (
+                <p className="notice" role="status">
+                  {m('This session expires after 15 minutes without an answer. Your typed draft stays here; sending after expiry starts a new session.')}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </div>}
-      <WhyVaaniSetu onOpenPrivacy={() => setPrivacyModalOpen(true)} />
-      <HowItWorks onStartVoice={() => { setOnboarded(true); setStatus(''); focusComposer(); }} />
-      {!onboarded&&<section className="feature-strip"><article><b>01</b><h2>{d.voice}</h2><p>{m('YOUR LANGUAGE. YOUR PACE.')}</p></article><article><b>02</b><h2>{d.visual}</h2><p>{m('You’re always in charge.')}</p></article><article><b>03</b><h2>{d.typing}</h2><p>{m('Type or speak. No screen is required.')}</p></article></section>}
+      )}
     </main>
     <PrivacyExplainerModal open={privacyModalOpen} onClose={() => setPrivacyModalOpen(false)} />
-    <footer className="footer"><span><strong>{brand.name}</strong> · {m('Made for a more accessible everyday.')}</span><span>{locales.map(locale=>languageNames[locale]).join(' / ')}</span></footer>
+    <footer className="minimal-footer">
+      <div className="footer-container">
+        <div className="footer-brand">
+          <strong>{brand.name}</strong>
+          <span> · {m('Voice-first digital access assistant')}</span>
+        </div>
+        <div className="footer-languages">
+          {locales.map(locale => languageNames[locale]).join(' · ')}
+        </div>
+        <div className="footer-links">
+          <button type="button" className="text-button" onClick={() => setPrivacyModalOpen(true)}>{m('Privacy')}</button>
+          <span className="dot" aria-hidden="true">•</span>
+          <button type="button" className="text-button" onClick={() => setSecondary('help')}>{d.help}</button>
+        </div>
+      </div>
+    </footer>
   </div></WordsProvider>;
 }
