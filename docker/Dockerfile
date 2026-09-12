@@ -8,6 +8,7 @@ COPY apps/web/package.json ./apps/web/package.json
 RUN --mount=type=cache,id=guide-pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --store-dir /pnpm/store
 COPY packages ./packages
 COPY apps ./apps
+COPY config ./config
 RUN pnpm --filter @guide/contracts build
 ARG APP_FILTER
 ARG NEXT_PUBLIC_FIREBASE_API_KEY

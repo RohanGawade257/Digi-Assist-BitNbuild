@@ -8,7 +8,7 @@ playwright-report/
 .env.*
 !.env.example
 secrets/
-config/quota-policy.json
+# config/quota-policy.json is committed: it contains rate-limit numbers, not secrets.
 *.tsbuildinfo
 *.log
 .pnpm-store/

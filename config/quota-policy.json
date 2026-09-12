@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 3,
+  "groups": [
+    {
+      "id": "gemini-main",
+      "provider": "gemini",
+      "apis": [
+        {
+          "operation": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "verified": true,
+          "limits": {
+            "rpm": {
+              "status": "verified",
+              "value": 15,
+              "evidence": "User confirmed Gemini 3.5 Flash Lite dashboard limits, 2026-09-11"
+            },
+            "tpm": {
+              "status": "verified",
+              "value": 250000,
+              "evidence": "User confirmed Gemini 3.5 Flash Lite dashboard limits, 2026-09-11"
+            },
+            "rpd": {
+              "status": "verified",
+              "value": 500,
+              "evidence": "User confirmed Gemini 3.5 Flash Lite dashboard limits, 2026-09-11"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sarvam-main",
+      "provider": "sarvam",
+      "apis": [
+        {
+          "operation": "translate",
+          "verified": true,
+          "limits": {
+            "rpm": {
+              "status": "verified",
+              "value": 60,
+              "evidence": "User confirmed free tier; Starter REST limits https://docs.sarvam.ai/api/getting-started/ratelimits checked 2026-09-11"
+            },
+            "tpm": {
+              "status": "unpublished",
+              "evidence": "https://docs.sarvam.ai/api/getting-started/ratelimits (2026-09-11): these REST APIs publish per-API RPM by plan, not TPM/RPD; not a claim of unlimited allowance"
+            },
+            "rpd": {
+              "status": "unpublished",
+              "evidence": "https://docs.sarvam.ai/api/getting-started/ratelimits (2026-09-11): these REST APIs publish per-API RPM by plan, not TPM/RPD; not a claim of unlimited allowance"
+            }
+          }
+        },
+        {
+          "operation": "transcribe",
+          "verified": true,
+          "limits": {
+            "rpm": {
+              "status": "verified",
+              "value": 60,
+              "evidence": "User confirmed free tier; Starter REST limits https://docs.sarvam.ai/api/getting-started/ratelimits checked 2026-09-11"
+            },
+            "tpm": {
+              "status": "unpublished",
+              "evidence": "https://docs.sarvam.ai/api/getting-started/ratelimits (2026-09-11): these REST APIs publish per-API RPM by plan, not TPM/RPD; not a claim of unlimited allowance"
+            },
+            "rpd": {
+              "status": "unpublished",
+              "evidence": "https://docs.sarvam.ai/api/getting-started/ratelimits (2026-09-11): these REST APIs publish per-API RPM by plan, not TPM/RPD; not a claim of unlimited allowance"
+            }
+          }
+        },
+        {
+          "operation": "speak",
+          "verified": true,
+          "limits": {
+            "rpm": {
+              "status": "verified",
+              "value": 30,
+              "evidence": "User confirmed free tier; Starter REST limits https://docs.sarvam.ai/api/getting-started/ratelimits checked 2026-09-11"
+            },
+            "tpm": {
+              "status": "unpublished",
+              "evidence": "https://docs.sarvam.ai/api/getting-started/ratelimits (2026-09-11): these REST APIs publish per-API RPM by plan, not TPM/RPD; not a claim of unlimited allowance"
+            },
+            "rpd": {
+              "status": "unpublished",
+              "evidence": "https://docs.sarvam.ai/api/getting-started/ratelimits (2026-09-11): these REST APIs publish per-API RPM by plan, not TPM/RPD; not a claim of unlimited allowance"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

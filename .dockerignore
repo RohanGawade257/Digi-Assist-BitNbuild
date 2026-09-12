@@ -7,7 +7,7 @@
 .env
 .env.*
 secrets
-config/quota-policy.json
+# config/quota-policy.json is included for rate limit rules
 Digital_Assistant_Architecture
 test-results
 playwright-report

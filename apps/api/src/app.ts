@@ -22,7 +22,7 @@ export class HealthController {
     const database = await this.db.ping();
     const ready = database && this.identity.configured && operationReady(this.config, 'gemini', 'generate');
     response.status(ready ? 200 : 503);
-    return { status: ready ? 'ready' : 'not_ready', database, identityConfigured: this.identity.configured, configurationValid: !this.config.problems.length, operations: { gemini: operationReady(this.config, 'gemini', 'generate'), translation: operationReady(this.config, 'sarvam', 'translate'), transcription: operationReady(this.config, 'sarvam', 'transcribe'), speechOutput: operationReady(this.config, 'sarvam', 'speak') }, pendingPolicies: this.config.pendingPolicies, providersLiveVerified: false };
+    return { status: ready ? 'ready' : 'not_ready', database, identityConfigured: this.identity.configured, configurationValid: !this.config.problems.length, problems: this.config.problems, operations: { gemini: operationReady(this.config, 'gemini', 'generate'), translation: operationReady(this.config, 'sarvam', 'translate'), transcription: operationReady(this.config, 'sarvam', 'transcribe'), speechOutput: operationReady(this.config, 'sarvam', 'speak') }, pendingPolicies: this.config.pendingPolicies, providersLiveVerified: false };
   }
 }
 @Controller()

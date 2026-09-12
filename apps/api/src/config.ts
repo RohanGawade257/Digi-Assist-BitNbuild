@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
@@ -47,7 +47,23 @@ export class Configuration {
     this.projectId = this.env.FIREBASE_PROJECT_ID || '';
     this.model = this.env.GEMINI_MODEL || '';
     this.translationModel = this.env.SARVAM_TRANSLATION_MODEL || 'sarvam-translate:v1';
-    this.credentialsPath = this.env.GOOGLE_APPLICATION_CREDENTIALS ? resolve(this.env.GOOGLE_APPLICATION_CREDENTIALS) : '';
+    const creds = this.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (creds) {
+      if (existsSync(creds)) {
+        this.credentialsPath = resolve(creds);
+      } else {
+        const altCreds = [
+          resolve(process.cwd(), creds),
+          resolve(__dirname, creds),
+          resolve(process.cwd(), creds.replace(/^(\.\.[\/\\])+/, '')),
+          resolve(__dirname, '../../../', creds.replace(/^(\.\.[\/\\])+/, ''))
+        ];
+        const found = altCreds.find(p => existsSync(p));
+        this.credentialsPath = found ? resolve(found) : resolve(creds);
+      }
+    } else {
+      this.credentialsPath = '';
+    }
     for (const [key, value] of [['MONGODB_URI', this.mongoUri], ['FIREBASE_PROJECT_ID', this.projectId], ['GEMINI_MODEL', this.model], ['GOOGLE_APPLICATION_CREDENTIALS', this.credentialsPath]]) if (!value) this.problems.push(key!);
     if (this.env.FIREBASE_AUTH_EMULATOR_HOST) this.problems.push('FIREBASE_AUTH_EMULATOR_HOST_NOT_ALLOWED');
     if (this.env.PERSIST_RAW_MEDIA && this.env.PERSIST_RAW_MEDIA !== 'false') this.problems.push('PERSIST_RAW_MEDIA');
@@ -66,7 +82,23 @@ export class Configuration {
       if (!this.slots[provider].length) this.problems.push(`${provider.toUpperCase()}_API_KEY_1`);
     }
     try {
-      const raw = JSON.parse(readFileSync(this.env.QUOTA_POLICY_PATH || '../../config/quota-policy.json', 'utf8'));
+      let rawText = this.env.QUOTA_POLICY_RAW || this.env.QUOTA_POLICY_JSON;
+      if (!rawText) {
+        const rawPath = this.env.QUOTA_POLICY_PATH || '../../config/quota-policy.json';
+        const candidatePaths = [
+          rawPath,
+          resolve(process.cwd(), rawPath),
+          resolve(__dirname, rawPath),
+          resolve(process.cwd(), rawPath.replace(/^(\.\.[\/\\])+/, '')),
+          resolve(process.cwd(), 'config/quota-policy.json'),
+          resolve(__dirname, '../../../config/quota-policy.json'),
+          resolve(__dirname, '../../config/quota-policy.json')
+        ];
+        const found = candidatePaths.find(p => p && existsSync(p));
+        if (!found) throw new Error('Quota policy file not found');
+        rawText = readFileSync(found, 'utf8');
+      }
+      const raw = JSON.parse(rawText);
       const policy = raw.schemaVersion === 3 ? quotaPolicyV3Schema.parse(raw) : quotaSchema.parse(raw);
       if (policy.schemaVersion === 2) this.groups.push(...policy.groups);
       else for (const group of policy.groups) {
