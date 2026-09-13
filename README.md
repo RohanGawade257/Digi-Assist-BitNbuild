@@ -8,6 +8,31 @@ Currently supported languages: **Hindi (हिन्दी), English, Bengali (�
 
 ---
 
+## Project Links And Submission Checklist
+
+- **Live website:** [VaaniSetu](https://digi-assist-bit-nbuild-web-pi.vercel.app/)
+- **Public repository:** Set the GitHub repository visibility to **Public** before submission.
+- **Unstop submission:** Enter the public GitHub repository URL in Unstop's designated GitHub field.
+- **Team submission:** The team leader or any team member may submit the repository link.
+- **Source code:** Application code is in `apps/`, shared contracts are in `packages/contracts`, and tests are in `tests/` and `apps/api/test/`.
+- **Secrets:** Never commit passwords, API keys, Firebase Admin credentials, private keys, `.env` files, generated builds, or test artifacts. Local environment files and `secrets/` are excluded by `.gitignore`.
+
+## Technology Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| Web application | Next.js 16, React 19, TypeScript |
+| Backend API | NestJS 11, Express 5, TypeScript |
+| Authentication | Firebase Authentication and Firebase Admin |
+| Database | MongoDB 8 through the MongoDB Node.js driver |
+| AI and speech | Google Gemini for guidance and vision; Sarvam AI for translation, speech-to-text, and text-to-speech |
+| Browser capabilities | Document Picture-in-Picture, screen capture, Web Audio, and client-side VAD |
+| Testing and tooling | Playwright, axe-core, Node test runner, pnpm, and Docker Compose |
+
+## What This Project Does
+
+VaaniSetu helps people understand and complete unfamiliar digital tasks using voice or typed questions in supported Indian languages. Users can request step-by-step guidance, upload a screenshot or share a supported desktop source, and review responses before taking actions themselves. The assistant does not click, submit forms, make payments, or send email on the user's behalf.
+
 ## 🚀 Quickstart: Run Locally in 5 Minutes (Beginner Guide)
 
 Follow these step-by-step instructions if you have just cloned the repository and want to run it on your machine.
